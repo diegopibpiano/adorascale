@@ -1,0 +1,627 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AdoraScale - Gestão de Escala & Louvor</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link rel="stylesheet" href="styles.css">
+    <!-- PWA Settings -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#6366f1">
+    <link rel="apple-touch-icon" href="icon-192.jpg">
+</head>
+<body class="dark-theme">
+    <div class="app-container">
+        <!-- Sidebar Navigation -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <div class="logo-container">
+                    <div class="logo-icon">
+                        <i data-lucide="music-4"></i>
+                    </div>
+                    <div class="logo-text">
+                        <h2>AdoraScale</h2>
+                        <spam>Ministério de Louvor</spam>
+                    </div>
+                </div>
+            </div>
+            <nav class="sidebar-nav">
+                <button class="nav-item active" data-tab="dashboard">
+                    <i data-lucide="layout-dashboard"></i>
+                    <span>Dashboard</span>
+                </button>
+                <button class="nav-item" data-tab="escalas">
+                    <i data-lucide="calendar"></i>
+                    <span>Escalas</span>
+                </button>
+                <button class="nav-item" data-tab="repertorio">
+                    <i data-lucide="music"></i>
+                    <span>Repertório</span>
+                </button>
+                <button class="nav-item" data-tab="equipe">
+                    <i data-lucide="users"></i>
+                    <span>Equipe</span>
+                </button>
+                <button class="nav-item admin-only" data-tab="configuracoes">
+                    <i data-lucide="settings"></i>
+                    <span>Configurações</span>
+                </button>
+            </nav>
+            <div class="sidebar-footer">
+                <div class="user-profile">
+                    <div class="user-avatar" id="sidebar-role-icon" style="background-color: var(--secondary);"><i data-lucide="lock" style="width:16px; height:16px;"></i></div>
+                    <div class="user-info">
+                        <span class="user-name" id="sidebar-role-name" style="font-size: 0.85rem;">Modo Leitor</span>
+                        <div><span class="role-badge" id="sidebar-role-badge">Usuário</span></div>
+                        <button class="btn-login-toggle" id="btn-login-modal">
+                            <i data-lucide="log-in"></i>
+                            <span id="btn-login-text">Área Restrita</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content Area -->
+        <main class="main-content">
+            <!-- Top Navbar -->
+            <header class="top-bar">
+                <div class="page-title">
+                    <h1 id="current-tab-title">Dashboard</h1>
+                    <p id="current-tab-subtitle">Resumo das atividades e próximas escalas</p>
+                </div>
+                <div class="top-bar-actions">
+                    <div class="date-badge">
+                        <i data-lucide="clock"></i>
+                        <span id="live-date">Carregando data...</span>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Notification Toast Container -->
+            <div id="toast-container" class="toast-container"></div>
+
+            <!-- Tab Contents -->
+            <div class="tab-content-container">
+                <!-- 1. DASHBOARD -->
+                <section id="tab-dashboard" class="tab-pane active">
+                    <!-- Stats Cards -->
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <div class="stat-icon bg-violet">
+                                <i data-lucide="music"></i>
+                            </div>
+                            <div class="stat-data">
+                                <span class="stat-label">Repertório</span>
+                                <h3 class="stat-value" id="stat-total-songs">0</h3>
+                                <span class="stat-subtext">Músicas cadastradas</span>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon bg-blue">
+                                <i data-lucide="calendar-check"></i>
+                            </div>
+                            <div class="stat-data">
+                                <span class="stat-label">Escalas</span>
+                                <h3 class="stat-value" id="stat-total-schedules">0</h3>
+                                <span class="stat-subtext">Cultos programados</span>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon bg-emerald">
+                                <i data-lucide="users"></i>
+                            </div>
+                            <div class="stat-data">
+                                <span class="stat-label">Equipe</span>
+                                <h3 class="stat-value" id="stat-total-members">0</h3>
+                                <span class="stat-subtext">Músicos e voluntários</span>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon bg-rose">
+                                <i data-lucide="disc"></i>
+                            </div>
+                            <div class="stat-data">
+                                <span class="stat-label">Mais Tocada</span>
+                                <h3 class="stat-value" id="stat-top-song">Nenhuma</h3>
+                                <span class="stat-subtext" id="stat-top-song-count">0 execuções</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Dashboard Layout Grid -->
+                    <div class="dashboard-grid">
+                        <!-- Next Schedules -->
+                        <div class="grid-card col-span-2">
+                            <div class="card-header">
+                                <h3>Próximos Cultos</h3>
+                                <button class="btn btn-secondary btn-sm" onclick="switchTab('escalas')">Ver todas</button>
+                            </div>
+                            <div class="card-body">
+                                <div id="dashboard-next-schedules" class="schedules-timeline">
+                                    <!-- Dynamic next schedules -->
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Statistics Column -->
+                        <div class="grid-card">
+                            <div class="card-header">
+                                <h3>Mais Cantadas</h3>
+                            </div>
+                            <div class="card-body">
+                                <div id="dashboard-most-sung-songs" class="most-sung-list">
+                                    <!-- Dynamic most sung songs -->
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- 2. ESCALAS -->
+                <section id="tab-escalas" class="tab-pane">
+                    <div class="section-actions">
+                        <div class="search-filter-bar">
+                            <div class="input-icon-group">
+                                <i data-lucide="search"></i>
+                                <input type="text" id="search-escalas" placeholder="Buscar escalas (tipo de culto, data)...">
+                            </div>
+                        </div>
+                        <button class="btn btn-primary admin-only" id="btn-nova-escala">
+                            <i data-lucide="plus"></i>
+                            <span>Nova Escala</span>
+                        </button>
+                    </div>
+
+                    <div id="escalas-list" class="escalas-container">
+                        <!-- Dynamic list of schedules -->
+                    </div>
+                </section>
+
+                <!-- 3. REPERTORIO -->
+                <section id="tab-repertorio" class="tab-pane">
+                    <div class="section-actions">
+                        <div class="search-filter-bar">
+                            <div class="input-icon-group search-input">
+                                <i data-lucide="search"></i>
+                                <input type="text" id="search-músicas" placeholder="Buscar música por título, artista ou tom...">
+                            </div>
+                            <select id="filter-tom" class="form-select">
+                                <option value="">Todos os Tons</option>
+                                <option value="C">Dó (C)</option>
+                                <option value="D">Ré (D)</option>
+                                <option value="E">Mi (E)</option>
+                                <option value="F">Fá (F)</option>
+                                <option value="G">Sol (G)</option>
+                                <option value="A">Lá (A)</option>
+                                <option value="B">Si (B)</option>
+                                <option value="Cm">Dó menor (Cm)</option>
+                                <option value="Dm">Ré menor (Dm)</option>
+                                <option value="Em">Mi menor (Em)</option>
+                                <option value="Fm">Fá menor (Fm)</option>
+                                <option value="Gm">Sol menor (Gm)</option>
+                                <option value="Am">Lá menor (Am)</option>
+                                <option value="Bm">Si menor (Bm)</option>
+                            </select>
+                        </div>
+                        <button class="btn btn-primary admin-only" id="btn-nova-musica">
+                            <i data-lucide="plus"></i>
+                            <span>Nova Música</span>
+                        </button>
+                    </div>
+
+                    <div class="grid-table-container">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Título</th>
+                                    <th>Artista / Ministério</th>
+                                    <th>Tom</th>
+                                    <th>Acessos Rápidos</th>
+                                    <th>Execuções</th>
+                                    <th class="admin-only">Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody id="músicas-list-table">
+                                <!-- Dynamic list of songs -->
+                            </tbody>
+                        </table>
+                        <div id="repertorio-empty" class="empty-state hidden">
+                            <i data-lucide="music-3"></i>
+                            <h4>Nenhuma música encontrada</h4>
+                            <p>Tente refinar sua busca ou adicione uma nova música.</p>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- 4. EQUIPE -->
+                <section id="tab-equipe" class="tab-pane">
+                    <div class="section-actions">
+                        <div class="search-filter-bar">
+                            <div class="input-icon-group">
+                                <i data-lucide="search"></i>
+                                <input type="text" id="search-membros" placeholder="Buscar membros por nome ou função...">
+                            </div>
+                        </div>
+                        <button class="btn btn-primary admin-only" id="btn-novo-membro">
+                            <i data-lucide="user-plus"></i>
+                            <span>Novo Membro</span>
+                        </button>
+                    </div>
+
+                    <div class="members-grid" id="membros-list-grid">
+                        <!-- Dynamic list of members -->
+                    </div>
+                    <div id="equipe-empty" class="empty-state hidden">
+                        <i data-lucide="users-2"></i>
+                        <h4>Nenhum membro encontrado</h4>
+                        <p>Adicione músicos e voluntários para montar suas escalas.</p>
+                    </div>
+                </section>
+
+                <!-- 5. CONFIGURACOES -->
+                <section id="tab-configuracoes" class="tab-pane">
+                    <div class="config-grid">
+                        <div class="grid-card">
+                            <div class="card-header">
+                                <h3>Backup dos Dados</h3>
+                            </div>
+                            <div class="card-body">
+                                <p class="text-secondary mb-4">Como o aplicativo roda localmente no seu navegador, é importante salvar cópias dos seus dados de escala e repertório regularmente para evitar perda acidental de dados.</p>
+                                
+                                <div class="backup-actions">
+                                    <button class="btn btn-primary" id="btn-exportar-backup">
+                                        <i data-lucide="download"></i>
+                                        <span>Exportar Backup (JSON)</span>
+                                    </button>
+                                    <div class="import-backup-group">
+                                        <label for="import-file" class="btn btn-secondary">
+                                            <i data-lucide="upload"></i>
+                                            <span>Importar Backup</span>
+                                        </label>
+                                        <input type="file" id="import-file" accept=".json" style="display: none;">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="grid-card">
+                            <div class="card-header">
+                                <h3>Ações Administrativas</h3>
+                            </div>
+                            <div class="card-body">
+                                <p class="text-secondary mb-4">Use estas ações para reiniciar o banco de dados local com dados demonstrativos completos ou apagar tudo para começar do zero.</p>
+                                
+                                <div class="admin-actions">
+                                    <button class="btn btn-info" id="btn-reset-demo">
+                                        <i data-lucide="refresh-cw"></i>
+                                        <span>Carregar Dados Demonstrativos</span>
+                                    </button>
+                                    <button class="btn btn-danger" id="btn-limpar-dados">
+                                        <i data-lucide="trash-2"></i>
+                                        <span>Limpar Todos os Dados</span>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            </div>
+        </main>
+    </div>
+
+    <!-- ==================== MODALS ==================== -->
+
+    <!-- 1. MODAL MUSICA (Criação/Edição) -->
+    <div id="modal-musica" class="modal-overlay">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="modal-musica-title">Nova Música</h3>
+                <button class="modal-close" id="modal-musica-close">&times;</button>
+            </div>
+            <form id="form-musica">
+                <input type="hidden" id="musica-id">
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label for="musica-titulo">Título da Música *</label>
+                        <input type="text" id="musica-titulo" required placeholder="Ex: Lindo És">
+                    </div>
+                    <div class="form-group">
+                        <label for="musica-artista">Artista / Ministério *</label>
+                        <input type="text" id="musica-artista" required placeholder="Ex: David Brymer">
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group col-6">
+                            <label for="musica-tom">Tom (Key)</label>
+                            <input type="text" id="musica-tom" placeholder="Ex: G, A, Em">
+                        </div>
+                        <div class="form-group col-6">
+                            <label for="musica-bpm">BPM (Opcional)</label>
+                            <input type="number" id="musica-bpm" placeholder="Ex: 78">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="musica-link-drive">Link da Cifra (Google Drive) *</label>
+                        <div class="input-icon-group">
+                            <i data-lucide="file-text"></i>
+                            <input type="url" id="musica-link-drive" required placeholder="https://drive.google.com/...">
+                        </div>
+                        <span class="form-help">Link de compartilhamento da cifra/partitura que fica no Drive.</span>
+                    </div>
+                    <div class="form-group">
+                        <label for="musica-link-video">Link da Música/Gravação (YouTube/Spotify) *</label>
+                        <div class="input-icon-group">
+                            <i data-lucide="youtube"></i>
+                            <input type="url" id="musica-link-video" required placeholder="https://youtube.com/watch?...">
+                        </div>
+                        <span class="form-help">Link da versão de referência para a equipe ouvir.</span>
+                    </div>
+                    <div class="form-group">
+                        <label for="musica-observacoes">Observações (Arranjo, estrutura, etc.)</label>
+                        <textarea id="musica-observacoes" rows="3" placeholder="Ex: Começar suave só piano, na segunda estrofe entra bateria com groove de tom-tom. Tom de voz feminino."></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" id="modal-musica-cancel">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Salvar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- 2. MODAL MEMBRO (Criação/Edição) -->
+    <div id="modal-membro" class="modal-overlay">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="modal-membro-title">Novo Membro</h3>
+                <button class="modal-close" id="modal-membro-close">&times;</button>
+            </div>
+            <form id="form-membro">
+                <input type="hidden" id="membro-id">
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label for="membro-nome">Nome Completo *</label>
+                        <input type="text" id="membro-nome" required placeholder="Ex: Gabriel Silva">
+                    </div>
+                    <div class="form-group">
+                        <label for="membro-telefone">WhatsApp (Celular) *</label>
+                        <input type="tel" id="membro-telefone" required placeholder="Ex: (11) 99999-9999">
+                    </div>
+                    <div class="form-group">
+                        <label>Funções / Instrumentos *</label>
+                        <div class="checkbox-grid">
+                            <label class="checkbox-card">
+                                <input type="checkbox" name="funcoes" value="Ministro(a)">
+                                <span>Ministro(a)</span>
+                            </label>
+                            <label class="checkbox-card">
+                                <input type="checkbox" name="funcoes" value="Vocal">
+                                <span>Vocal</span>
+                            </label>
+                            <label class="checkbox-card">
+                                <input type="checkbox" name="funcoes" value="Teclado">
+                                <span>Teclado</span>
+                            </label>
+                            <label class="checkbox-card">
+                                <input type="checkbox" name="funcoes" value="Violão">
+                                <span>Violão</span>
+                            </label>
+                            <label class="checkbox-card">
+                                <input type="checkbox" name="funcoes" value="Guitarra">
+                                <span>Guitarra</span>
+                            </label>
+                            <label class="checkbox-card">
+                                <input type="checkbox" name="funcoes" value="Baixo">
+                                <span>Baixo</span>
+                            </label>
+                            <label class="checkbox-card">
+                                <input type="checkbox" name="funcoes" value="Bateria">
+                                <span>Bateria</span>
+                            </label>
+                            <label class="checkbox-card">
+                                <input type="checkbox" name="funcoes" value="Som">
+                                <span>Som (Técnico)</span>
+                            </label>
+                            <label class="checkbox-card">
+                                <input type="checkbox" name="funcoes" value="Mídia">
+                                <span>Mídia / Projeção</span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" id="modal-membro-cancel">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Salvar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- 3. MODAL ESCALA (Criação/Edição) -->
+    <div id="modal-escala" class="modal-overlay">
+        <div class="modal-content modal-lg">
+            <div class="modal-header">
+                <h3 id="modal-escala-title">Nova Escala de Culto</h3>
+                <button class="modal-close" id="modal-escala-close">&times;</button>
+            </div>
+            <form id="form-escala">
+                <input type="hidden" id="escala-id">
+                <div class="modal-body">
+                    <div class="form-row">
+                        <div class="form-group col-6">
+                            <label for="escala-data">Data *</label>
+                            <input type="date" id="escala-data" required>
+                        </div>
+                        <div class="form-group col-6">
+                            <label for="escala-hora">Horário *</label>
+                            <input type="time" id="escala-hora" required>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group col-6">
+                            <label for="escala-tipo">Tipo de Culto / Evento *</label>
+                            <select id="escala-tipo" required class="form-select">
+                                <option value="Culto de Domingo">Culto de Domingo</option>
+                                <option value="Culto de Ensino">Culto de Ensino / Quarta-feira</option>
+                                <option value="Culto de Jovens">Culto de Jovens</option>
+                                <option value="Culto de Mulheres">Culto de Mulheres</option>
+                                <option value="Culto de Homens">Culto de Homens</option>
+                                <option value="Vigília">Vigília</option>
+                                <option value="Outro/Especial">Outro/Evento Especial</option>
+                            </select>
+                        </div>
+                        <div class="form-group col-6">
+                            <label for="escala-obs">Observações / Detalhes</label>
+                            <input type="text" id="escala-obs" placeholder="Ex: Culto da Família, Santa Ceia, etc.">
+                        </div>
+                    </div>
+
+                    <div class="divider">Integrantes da Escala</div>
+
+                    <div class="integrantes-form-grid">
+                        <div class="form-group">
+                            <label for="escala-ministro">Ministro(a) de Louvor</label>
+                            <select id="escala-ministro" class="form-select select-membro" data-funcao="Ministro(a)">
+                                <option value="">-- Selecione --</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="escala-teclado">Teclado</label>
+                            <select id="escala-teclado" class="form-select select-membro" data-funcao="Teclado">
+                                <option value="">-- Selecione --</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="escala-violao">Violão</label>
+                            <select id="escala-violao" class="form-select select-membro" data-funcao="Violão">
+                                <option value="">-- Selecione --</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="escala-guitarra">Guitarra</label>
+                            <select id="escala-guitarra" class="form-select select-membro" data-funcao="Guitarra">
+                                <option value="">-- Selecione --</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="escala-baixo">Contrabaixo</label>
+                            <select id="escala-baixo" class="form-select select-membro" data-funcao="Baixo">
+                                <option value="">-- Selecione --</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="escala-bateria">Bateria</label>
+                            <select id="escala-bateria" class="form-select select-membro" data-funcao="Bateria">
+                                <option value="">-- Selecione --</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="escala-vocal1">Vocal 1</label>
+                            <select id="escala-vocal1" class="form-select select-membro" data-funcao="Vocal">
+                                <option value="">-- Selecione --</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="escala-vocal2">Vocal 2</label>
+                            <select id="escala-vocal2" class="form-select select-membro" data-funcao="Vocal">
+                                <option value="">-- Selecione --</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="escala-vocal3">Vocal 3</label>
+                            <select id="escala-vocal3" class="form-select select-membro" data-funcao="Vocal">
+                                <option value="">-- Selecione --</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="escala-som">Sonorização (Técnico)</label>
+                            <select id="escala-som" class="form-select select-membro" data-funcao="Som">
+                                <option value="">-- Selecione --</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="escala-midia">Mídia / Projeção</label>
+                            <select id="escala-midia" class="form-select select-membro" data-funcao="Mídia">
+                                <option value="">-- Selecione --</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="divider">Setlist (Músicas Selecionadas)</div>
+                    
+                    <div class="form-group">
+                        <label>Selecione as músicas do culto (em ordem de execução):</label>
+                        <div class="setlist-dropdown-container">
+                            <div class="setlist-dropdown-row">
+                                <select id="setlist-dropdown" class="form-select">
+                                    <option value="">-- Selecione uma música para adicionar --</option>
+                                </select>
+                                <button type="button" class="btn btn-primary btn-sm" onclick="addSongFromDropdown()">
+                                    <i data-lucide="plus" style="width:14px; height:14px;"></i>
+                                    <span>Adicionar</span>
+                                </button>
+                            </div>
+                            <div class="setlist-ordered-list">
+                                <span class="panel-title">Setlist do Culto (use os botões para ordenar)</span>
+                                <div id="setlist-selected-list" class="setlist-selection-list">
+                                    <!-- Dynamic selected songs -->
+                                </div>
+                                <div id="setlist-selected-empty" class="empty-selection">
+                                    Nenhuma música selecionada ainda.
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" id="modal-escala-cancel">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Salvar Escala</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- 4. MODAL LOGIN (Níveis de Acesso) -->
+    <div id="modal-login" class="modal-overlay">
+        <div class="modal-content" style="max-width: 400px;">
+            <div class="modal-header">
+                <h3>Acesso Restrito (Painel Admin)</h3>
+                <button class="modal-close" id="modal-login-close">&times;</button>
+            </div>
+            <form id="form-login">
+                <div class="modal-body">
+                    <p class="text-secondary mb-4" style="font-size: 0.85rem;">Insira a senha de administrador para habilitar as funções de criação, edição e exclusão.</p>
+                    <div class="form-group">
+                        <label for="login-senha">Senha de Acesso</label>
+                        <input type="password" id="login-senha" required placeholder="Digite a senha...">
+                        <span class="form-help" style="margin-top: 4px;">Senha padrão para testes: <strong>adoracao123</strong></span>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" id="modal-login-cancel">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Entrar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- App Logic Script -->
+    <script src="app.js"></script>
+    <!-- Register Service Worker for PWA -->
+    <script>
+        if ("serviceWorker" in navigator) {
+            window.addEventListener("load", () => {
+                navigator.serviceWorker.register("./sw.js")
+                    .then(reg => console.log("Service Worker registrado com sucesso!", reg.scope))
+                    .catch(err => console.log("Falha ao registrar o Service Worker:", err));
+            });
+        }
+    </script>
+</body>
+</html>
