@@ -3,8 +3,38 @@ let state = {
     songs: [],
     members: [],
     schedules: [],
+    users: [],
+    currentUser: null,
     currentRole: "usuario"
 };
+
+function buildDefaultUsers() {
+    const users = [{
+        id: "u_admin",
+        username: "admin",
+        password: "adoracao123",
+        nome: "Administrador",
+        role: "administrador",
+        telefone: "11999990000",
+        memberId: ""
+    }];
+
+    const memberIds = ["m1", "m2", "m3", "m4", "m5", "m6", "m7", "m8"];
+    for (let i = 1; i <= 99; i++) {
+        const memberId = memberIds[(i - 1) % memberIds.length] || "";
+        users.push({
+            id: `u${i}`,
+            username: `user${i}`,
+            password: "senha123",
+            nome: `Usuário ${i}`,
+            role: "usuario",
+            telefone: `119${String(i).padStart(8, "0")}`,
+            memberId
+        });
+    }
+
+    return users;
+}
 
 // Default Mock Data in Portuguese
 const defaultMockData = {
@@ -160,11 +190,16 @@ function initLucide() {
 
 // ==================== ROLE-BASED ACCESS CONTROL ====================
 function initRole() {
-    // Check session storage for login role
-    const savedRole = sessionStorage.getItem("adorascale_role");
-    if (savedRole === "administrador") {
-        state.currentRole = "administrador";
+    const savedCurrentUser = sessionStorage.getItem("adorascale_currentUser");
+    if (savedCurrentUser) {
+        const parsedUser = JSON.parse(savedCurrentUser);
+        const matchedUser = state.users.find(user => user.id === parsedUser.id);
+        if (matchedUser) {
+            state.currentUser = matchedUser;
+            state.currentRole = matchedUser.role;
+        }
     } else {
+        state.currentUser = null;
         state.currentRole = "usuario";
     }
     updateRoleUI();
@@ -186,7 +221,7 @@ function updateRoleUI() {
             roleIcon.style.backgroundColor = "rgba(99, 102, 241, 0.15)";
             roleIcon.innerHTML = '<i data-lucide="unlock" style="width:16px; height:16px;"></i>';
         }
-        if (roleName) roleName.textContent = "Painel Admin";
+        if (roleName) roleName.textContent = state.currentUser ? `Olá, ${state.currentUser.nome.split(" ")[0]}` : "Painel Admin";
         if (roleBadge) {
             roleBadge.textContent = "Admin";
             roleBadge.className = "role-badge";
@@ -204,9 +239,9 @@ function updateRoleUI() {
             roleIcon.style.backgroundColor = "var(--secondary)";
             roleIcon.innerHTML = '<i data-lucide="lock" style="width:16px; height:16px;"></i>';
         }
-        if (roleName) roleName.textContent = "Modo Leitor";
+        if (roleName) roleName.textContent = state.currentUser ? `Olá, ${state.currentUser.nome.split(" ")[0]}` : "Modo Leitor";
         if (roleBadge) {
-            roleBadge.textContent = "Usuário";
+            roleBadge.textContent = state.currentUser ? (state.currentUser.role === "administrador" ? "Admin" : "Usuário") : "Usuário";
             roleBadge.className = "role-badge";
         }
         if (btnText) btnText.textContent = "Área Restrita";
@@ -225,34 +260,47 @@ function updateRoleUI() {
     initLucide();
 }
 
+function getCurrentUserMemberId() {
+    return state.currentUser && state.currentUser.memberId ? state.currentUser.memberId : null;
+}
+
 function toggleLoginState() {
-    if (state.currentRole === "administrador") {
+    if (state.currentUser) {
+        state.currentUser = null;
         state.currentRole = "usuario";
+        sessionStorage.removeItem("adorascale_currentUser");
         sessionStorage.removeItem("adorascale_role");
         updateRoleUI();
-        showToast("Retornou ao Modo Leitor.", "info");
+        showToast("Você saiu da sessão atual.", "info");
     } else {
         const modal = document.getElementById("modal-login");
         const passwordInput = document.getElementById("login-senha");
+        const usernameInput = document.getElementById("login-username");
         if (passwordInput) passwordInput.value = "";
+        if (usernameInput) usernameInput.value = "";
         if (modal) modal.classList.add("active");
     }
 }
 
 function handleLoginSubmit(e) {
     e.preventDefault();
+    const usernameInput = document.getElementById("login-username");
     const passwordInput = document.getElementById("login-senha");
+    const username = usernameInput ? usernameInput.value.trim().toLowerCase() : "";
     const password = passwordInput ? passwordInput.value : "";
 
-    if (password === "adoracao123") {
-        state.currentRole = "administrador";
-        sessionStorage.setItem("adorascale_role", "administrador");
+    const user = state.users.find(item => item.username.toLowerCase() === username && item.password === password);
+
+    if (user) {
+        state.currentUser = user;
+        state.currentRole = user.role;
+        saveState();
         updateRoleUI();
-        showToast("Acesso de Administrador ativado!", "success");
+        showToast(`Bem-vindo(a), ${user.nome}!`, "success");
         const modal = document.getElementById("modal-login");
         if (modal) modal.classList.remove("active");
     } else {
-        showToast("Senha incorreta!", "danger");
+        showToast("Login ou senha incorretos!", "danger");
     }
 }
 
@@ -261,17 +309,33 @@ function loadState() {
     const songs = localStorage.getItem("adorascale_songs");
     const members = localStorage.getItem("adorascale_members");
     const schedules = localStorage.getItem("adorascale_schedules");
+    const users = localStorage.getItem("adorascale_users");
 
     if (songs && members && schedules) {
         state.songs = JSON.parse(songs);
         state.members = JSON.parse(members);
         state.schedules = JSON.parse(schedules);
+        state.users = users ? JSON.parse(users) : buildDefaultUsers();
     } else {
         // Load default mock data
         state.songs = [...defaultMockData.songs];
         state.members = [...defaultMockData.members];
         state.schedules = [...defaultMockData.schedules];
+        state.users = buildDefaultUsers();
         saveState();
+    }
+
+    const savedCurrentUser = sessionStorage.getItem("adorascale_currentUser");
+    if (savedCurrentUser) {
+        const parsedUser = JSON.parse(savedCurrentUser);
+        const matchedUser = state.users.find(user => user.id === parsedUser.id);
+        if (matchedUser) {
+            state.currentUser = matchedUser;
+            state.currentRole = matchedUser.role;
+        }
+    } else {
+        state.currentUser = null;
+        state.currentRole = "usuario";
     }
     
     // Sort items logically
@@ -282,6 +346,14 @@ function saveState() {
     localStorage.setItem("adorascale_songs", JSON.stringify(state.songs));
     localStorage.setItem("adorascale_members", JSON.stringify(state.members));
     localStorage.setItem("adorascale_schedules", JSON.stringify(state.schedules));
+    localStorage.setItem("adorascale_users", JSON.stringify(state.users));
+
+    if (state.currentUser) {
+        sessionStorage.setItem("adorascale_currentUser", JSON.stringify(state.currentUser));
+    } else {
+        sessionStorage.removeItem("adorascale_currentUser");
+    }
+    sessionStorage.setItem("adorascale_role", state.currentRole || "usuario");
 }
 
 function sortStateData() {
@@ -345,6 +417,16 @@ function setupEventListeners() {
     // Backup actions
     document.getElementById("btn-exportar-backup").addEventListener("click", exportBackup);
     document.getElementById("import-file").addEventListener("change", importBackup);
+
+    // Access management
+    const accessForm = document.getElementById("form-acesso");
+    if (accessForm) {
+        accessForm.addEventListener("submit", handleAccessSubmit);
+    }
+    const resetAccessBtn = document.getElementById("btn-limpar-acesso");
+    if (resetAccessBtn) {
+        resetAccessBtn.addEventListener("click", resetAccessForm);
+    }
     document.getElementById("btn-reset-demo").addEventListener("click", () => {
         if (confirm("Deseja realmente carregar os dados demonstrativos? Isso substituirá as alterações atuais.")) {
             localStorage.clear();
@@ -355,7 +437,14 @@ function setupEventListeners() {
     });
     document.getElementById("btn-limpar-dados").addEventListener("click", () => {
         if (confirm("ATENÇÃO: Deseja apagar todos os dados permanentemente? Essa ação não pode ser desfeita.")) {
-            state = { songs: [], members: [], schedules: [] };
+            state = {
+                songs: [],
+                members: [],
+                schedules: [],
+                users: buildDefaultUsers(),
+                currentUser: null,
+                currentRole: "usuario"
+            };
             saveState();
             renderAll();
             showToast("Todos os dados foram apagados.", "danger");
@@ -412,6 +501,7 @@ function renderTab(tabId) {
     else if (tabId === "escalas") renderSchedules();
     else if (tabId === "repertorio") renderSongs();
     else if (tabId === "equipe") renderMembers();
+    else if (tabId === "configuracoes") renderSettings();
 }
 
 function renderAll() {
@@ -419,6 +509,176 @@ function renderAll() {
     renderSchedules();
     renderSongs();
     renderMembers();
+    renderSettings();
+}
+
+// ==================== SETTINGS / ACCESS MANAGEMENT ====================
+function renderSettings() {
+    populateAccessMemberSelect();
+    renderUserAccesses();
+}
+
+function populateAccessMemberSelect() {
+    const select = document.getElementById("acesso-membro");
+    if (!select) return;
+
+    const currentValue = select.value || "";
+    select.innerHTML = '<option value="">-- Nenhum vínculo --</option>';
+
+    state.members.forEach(member => {
+        const option = document.createElement("option");
+        option.value = member.id;
+        option.textContent = `${member.nome} (${member.funcoes.join(", ")})`;
+        if (currentValue === member.id) option.selected = true;
+        select.appendChild(option);
+    });
+}
+
+function resetAccessForm() {
+    const form = document.getElementById("form-acesso");
+    if (!form) return;
+    form.reset();
+    document.getElementById("acesso-id").value = "";
+    document.getElementById("acesso-role").value = "usuario";
+    document.getElementById("acesso-membro").value = "";
+}
+
+function renderUserAccesses() {
+    const container = document.getElementById("acessos-list");
+    if (!container) return;
+
+    container.innerHTML = "";
+
+    if (!state.users || state.users.length === 0) {
+        container.innerHTML = '<p class="text-secondary">Nenhum acesso cadastrado.</p>';
+        return;
+    }
+
+    const list = document.createElement("div");
+    list.className = "escalas-container";
+
+    state.users.forEach(user => {
+        const card = document.createElement("div");
+        card.className = "escala-card";
+        const member = state.members.find(item => item.id === user.memberId);
+        card.innerHTML = `
+            <div class="escala-header">
+                <div class="escala-title-details">
+                    <h3>${user.nome}</h3>
+                    <div class="escala-meta">
+                        <span><i data-lucide="user"></i> ${user.username}</span>
+                        <span><i data-lucide="shield"></i> ${user.role === "administrador" ? "Administrador" : "Usuário"}</span>
+                        ${member ? `<span><i data-lucide="users"></i> ${member.nome}</span>` : ""}
+                    </div>
+                </div>
+                <div class="escala-card-actions">
+                    <button type="button" class="btn btn-secondary btn-sm" onclick="editAccessUser('${user.id}')">
+                        <i data-lucide="edit-3"></i>
+                        <span>Editar</span>
+                    </button>
+                    <button type="button" class="btn btn-danger btn-sm" onclick="deleteAccessUser('${user.id}')">
+                        <i data-lucide="trash-2"></i>
+                        <span>Excluir</span>
+                    </button>
+                </div>
+            </div>
+        `;
+        list.appendChild(card);
+    });
+
+    container.appendChild(list);
+    initLucide();
+}
+
+function editAccessUser(userId) {
+    const user = state.users.find(item => item.id === userId);
+    if (!user) return;
+
+    const form = document.getElementById("form-acesso");
+    if (!form) return;
+
+    document.getElementById("acesso-id").value = user.id;
+    document.getElementById("acesso-nome").value = user.nome;
+    document.getElementById("acesso-usuario").value = user.username;
+    document.getElementById("acesso-senha").value = user.password;
+    document.getElementById("acesso-role").value = user.role;
+    document.getElementById("acesso-telefone").value = user.telefone || "";
+    document.getElementById("acesso-membro").value = user.memberId || "";
+
+    document.getElementById("acesso-nome").focus();
+}
+
+function handleAccessSubmit(e) {
+    e.preventDefault();
+
+    const id = document.getElementById("acesso-id").value;
+    const nome = document.getElementById("acesso-nome").value.trim();
+    const username = document.getElementById("acesso-usuario").value.trim().toLowerCase();
+    const password = document.getElementById("acesso-senha").value;
+    const role = document.getElementById("acesso-role").value;
+    const telefone = document.getElementById("acesso-telefone").value.trim();
+    const memberId = document.getElementById("acesso-membro").value;
+
+    if (!nome || !username || !password) {
+        showToast("Preencha nome, usuário e senha para salvar o acesso.", "danger");
+        return;
+    }
+
+    const duplicateUser = state.users.find(item => item.username.toLowerCase() === username && item.id !== id);
+    if (duplicateUser) {
+        showToast("Esse nome de usuário já existe.", "danger");
+        return;
+    }
+
+    if (id) {
+        const index = state.users.findIndex(item => item.id === id);
+        if (index !== -1) {
+            state.users[index] = { ...state.users[index], nome, username, password, role, telefone, memberId };
+            showToast("Acesso atualizado com sucesso.", "success");
+        }
+    } else {
+        state.users.push({
+            id: `u_${Date.now()}`,
+            nome,
+            username,
+            password,
+            role,
+            telefone,
+            memberId
+        });
+        showToast("Novo acesso cadastrado com sucesso.", "success");
+    }
+
+    saveState();
+    renderSettings();
+    resetAccessForm();
+
+    if (state.currentUser && state.currentUser.id === id) {
+        state.currentUser = state.users.find(item => item.id === id) || null;
+        state.currentRole = state.currentUser ? state.currentUser.role : "usuario";
+        updateRoleUI();
+    }
+}
+
+function deleteAccessUser(userId) {
+    if (!confirm("Deseja realmente remover este acesso?")) return;
+
+    const targetUser = state.users.find(item => item.id === userId);
+    if (!targetUser) return;
+
+    state.users = state.users.filter(item => item.id !== userId);
+    saveState();
+
+    if (state.currentUser && state.currentUser.id === userId) {
+        state.currentUser = null;
+        state.currentRole = "usuario";
+        sessionStorage.removeItem("adorascale_currentUser");
+        sessionStorage.removeItem("adorascale_role");
+        updateRoleUI();
+    }
+
+    renderSettings();
+    showToast("Acesso removido.", "info");
 }
 
 // ==================== TOAST SYSTEM ====================
@@ -510,26 +770,44 @@ function renderDashboard() {
         });
     }
 
-    // 3. Render Upcoming Schedules (Today or Future)
+    // 3. Render Upcoming Schedules (Today or Future) - Grouped by Month
     const timelineContainer = document.getElementById("dashboard-next-schedules");
     timelineContainer.innerHTML = "";
 
     const todayStr = new Date().toISOString().split('T')[0];
-    const upcomingSchedules = state.schedules.filter(sc => sc.data >= todayStr).slice(0, 3);
-
+    let upcomingSchedules = state.schedules.filter(sc => sc.data >= todayStr);
+    
     if (upcomingSchedules.length === 0) {
-        // Show last schedules if no upcoming ones
-        const latestSchedules = state.schedules.slice(-2);
+        const latestSchedules = state.schedules.slice(-3);
         if (latestSchedules.length === 0) {
             timelineContainer.innerHTML = `<p class="text-secondary text-center py-4">Nenhuma escala programada.</p>`;
         } else {
-            latestSchedules.forEach(sc => timelineContainer.appendChild(createTimelineItem(sc)));
+            upcomingSchedules = latestSchedules;
         }
-    } else {
-        upcomingSchedules.forEach(sc => timelineContainer.appendChild(createTimelineItem(sc)));
     }
+
+    const groupedByMonth = groupSchedulesByMonth(upcomingSchedules);
+    Object.keys(groupedByMonth).sort().slice(0, 3).forEach(monthKey => {
+        const monthHeader = document.createElement("div");
+        monthHeader.className = "month-header";
+        monthHeader.innerHTML = `<h4 style="color: var(--text-primary); font-size: 1rem; margin: 16px 0 12px 0; border-bottom: 1px solid var(--border-color); padding-bottom: 8px;">${monthKey}</h4>`;
+        timelineContainer.appendChild(monthHeader);
+        
+        groupedByMonth[monthKey].forEach(sc => timelineContainer.appendChild(createTimelineItem(sc)));
+    });
     
     initLucide();
+}
+
+function groupSchedulesByMonth(schedules) {
+    const grouped = {};
+    schedules.forEach(sc => {
+        const dateObj = new Date(`${sc.data}T${sc.hora}`);
+        const monthKey = dateObj.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' }).replace(/\b\w/g, l => l.toUpperCase());
+        if (!grouped[monthKey]) grouped[monthKey] = [];
+        grouped[monthKey].push(sc);
+    });
+    return grouped;
 }
 
 function createTimelineItem(sc) {
@@ -957,7 +1235,23 @@ function renderSchedules() {
         return;
     }
 
-    filteredSchedules.forEach(sc => {
+    // Group schedules by month
+    const groupedByMonth = groupSchedulesByMonth(filteredSchedules);
+    
+    // Render each month
+    Object.keys(groupedByMonth).sort().forEach(monthKey => {
+        const monthHeader = document.createElement("div");
+        monthHeader.className = "month-header";
+        monthHeader.innerHTML = `<h3 style="color: var(--primary); font-size: 1.2rem; margin: 24px 0 16px 0; border-left: 4px solid var(--primary); padding-left: 12px;">${monthKey}</h3>`;
+        container.appendChild(monthHeader);
+
+        groupedByMonth[monthKey].forEach(sc => renderScheduleCard(container, sc));
+    });
+
+    initLucide();
+}
+
+function renderScheduleCard(container, sc) {
         const card = document.createElement("div");
         card.className = "escala-card";
 
@@ -1008,10 +1302,19 @@ function renderSchedules() {
                     indisponivel: { icon: "x-circle",     label: "Indisponível", cssClass: "confirm-indisponivel" }
                 };
                 const cfg = statusConfig[status];
+                const currentMemberId = getCurrentUserMemberId();
+                const isAdmin = state.currentRole === "administrador";
+                const isOwnMember = !!(currentMemberId && currentMemberId === member.id);
+                const canManageThis = isOwnMember || isAdmin;
+                const clickHandler = canManageThis
+                    ? `onclick="toggleConfirmation('${sc.id}', '${member.id}'); event.stopPropagation();"`
+                    : "";
+                const titleText = canManageThis 
+                    ? (isAdmin ? `${cfg.label} — Clique para alterar (Adm)` : `${cfg.label} — Clique para alterar`)
+                    : `${cfg.label} — Você só pode confirmar a própria presença`;
                 confirmBadgeHtml = `
-                    <button class="confirm-badge ${cfg.cssClass}" 
-                            onclick="toggleConfirmation('${sc.id}', '${member.id}'); event.stopPropagation();" 
-                            title="${cfg.label} — Clique para alterar">
+                    <button class="confirm-badge ${cfg.cssClass}" ${canManageThis ? clickHandler : ""} ${canManageThis ? "" : "disabled style=\"cursor:not-allowed; opacity:0.7;\""}
+                            title="${titleText}">
                         <i data-lucide="${cfg.icon}" style="width:12px; height:12px;"></i>
                         <span>${cfg.label}</span>
                     </button>
@@ -1123,6 +1426,12 @@ function renderSchedules() {
                     </button>
                 </div>
             </div>
+            ${sc.tema || sc.versiculos ? `
+            <div class="escala-pregacao-section" style="background-color: rgba(99, 102, 241, 0.05); border-left: 4px solid var(--primary); padding: 12px; margin: 12px 0; border-radius: 4px;">
+                ${sc.tema ? `<div style="margin-bottom: 8px;"><strong>📖 Tema:</strong> ${sc.tema}</div>` : ''}
+                ${sc.versiculos ? `<div style="font-size: 0.9rem; color: var(--text-secondary);"><strong>✝️ Versículos:</strong> ${sc.versiculos}</div>` : ''}
+            </div>
+            ` : ''}
             <div class="escala-body">
                 <div class="escala-team-section">
                     <h4>Equipe Escalada</h4>
@@ -1140,10 +1449,7 @@ function renderSchedules() {
         `;
 
         container.appendChild(card);
-    });
-
-    initLucide();
-}
+    }
 
 function capitalizeFirstLetter(string) {
     return string.charAt(0).toUpperCase() + string.slice(1);
@@ -1203,6 +1509,8 @@ function openScaleModal(scaleId = "") {
             document.getElementById("escala-hora").value = sc.hora;
             document.getElementById("escala-tipo").value = sc.tipo;
             document.getElementById("escala-obs").value = sc.obs || "";
+            document.getElementById("escala-tema").value = sc.tema || "";
+            document.getElementById("escala-versiculos").value = sc.versiculos || "";
 
             // Populate participants
             document.getElementById("escala-ministro").value = sc.ministro || "";
@@ -1236,15 +1544,83 @@ function openScaleModal(scaleId = "") {
 }
 
 // ==================== CONFIRMATION TOGGLE ====================
-function toggleConfirmation(scaleId, memberId) {
-    // Only admin can toggle
-    if (state.currentRole !== "administrador") {
-        showToast("Apenas o administrador pode alterar confirmações.", "danger");
-        return;
-    }
+function getRoleKeyForMember(sc, memberId) {
+    const positions = ["ministro", "teclado", "violao", "guitarra", "baixo", "bateria", "vocal1", "vocal2", "vocal3", "som", "midia"];
+    return positions.find(pos => sc[pos] === memberId) || null;
+}
 
+function getRoleLabel(roleKey) {
+    const labels = {
+        ministro: "Ministro(a)",
+        teclado: "Teclado",
+        violao: "Violão",
+        guitarra: "Guitarra",
+        baixo: "Contra-baixo",
+        bateria: "Bateria",
+        vocal1: "Vocal 1",
+        vocal2: "Vocal 2",
+        vocal3: "Vocal 3",
+        som: "Som",
+        midia: "Mídia"
+    };
+    return labels[roleKey] || "Função";
+}
+
+function notifyUnavailableMembers(sc, member) {
+    const roleKey = getRoleKeyForMember(sc, member.id);
+    const roleLabel = getRoleLabel(roleKey);
+    const formattedDate = new Date(`${sc.data}T${sc.hora}`).toLocaleDateString("pt-BR");
+    const messageText = `Olá! O membro ${member.nome} marcou indisponibilidade para a escala de ${sc.tipo} (${formattedDate} às ${sc.hora}h) na função ${roleLabel}. Por favor, confirme o ajuste da equipe.`;
+
+    const positions = roleKey && roleKey.startsWith("vocal") ? ["vocal1", "vocal2", "vocal3"] : roleKey ? [roleKey] : [];
+    const recipients = [];
+
+    state.members.forEach(candidate => {
+        if (candidate.id === member.id) return;
+        const isSameRole = positions.some(pos => sc[pos] === candidate.id);
+        if (isSameRole) recipients.push(candidate);
+    });
+
+    state.users.filter(user => user.role === "administrador").forEach(user => {
+        const recipientPhone = user.telefone;
+        if (recipientPhone) {
+            recipients.push({ id: `user:${user.id}`, nome: user.nome, telefone: recipientPhone });
+        }
+    });
+
+    const uniqueRecipients = recipients.filter((recipient, index, arr) => arr.findIndex(item => item.id === recipient.id) === index);
+
+    uniqueRecipients.forEach(recipient => {
+        const rawPhone = (recipient.telefone || "").replace(/\D/g, "");
+        if (!rawPhone) return;
+        const waLink = `https://wa.me/55${rawPhone}?text=${encodeURIComponent(messageText)}`;
+        window.open(waLink, "_blank", "noopener,noreferrer");
+    });
+
+    if ("Notification" in window && Notification.permission === "granted") {
+        new Notification("Indisponibilidade registrada", {
+            body: "Uma mensagem foi enviada para os colegas da função e para o administrador."
+        });
+    } else if ("Notification" in window && Notification.permission !== "denied") {
+        Notification.requestPermission().catch(() => {});
+    }
+}
+
+function toggleConfirmation(scaleId, memberId) {
     const sc = state.schedules.find(s => s.id === scaleId);
     if (!sc) return;
+
+    const member = state.members.find(m => m.id === memberId);
+    if (!member) return;
+
+    const isAdmin = state.currentRole === "administrador";
+    const currentMemberId = getCurrentUserMemberId();
+    const isOwnMember = !!currentMemberId && currentMemberId === memberId;
+
+    if (!isAdmin && !isOwnMember) {
+        showToast("Você só pode confirmar a própria presença.", "danger");
+        return;
+    }
 
     if (!sc.confirmacoes) sc.confirmacoes = {};
 
@@ -1259,6 +1635,10 @@ function toggleConfirmation(scaleId, memberId) {
 
     const labels = { pendente: "Pendente", confirmado: "Confirmado", indisponivel: "Indisponível" };
     showToast(`Status alterado para: ${labels[cycle[nextIndex]]}`, "info");
+
+    if (cycle[nextIndex] === "indisponivel") {
+        notifyUnavailableMembers(sc, member);
+    }
 }
 
 // ==================== SETLIST DROPDOWN BUILD ====================
@@ -1268,29 +1648,43 @@ function renderSetlistBuilder() {
 }
 
 function populateSetlistDropdown() {
-    const select = document.getElementById("setlist-dropdown");
-    if (!select) return;
+    const datalist = document.getElementById("setlist-songs-list");
+    const searchInput = document.getElementById("setlist-song-search");
+    if (!datalist || !searchInput) return;
 
-    select.innerHTML = '<option value="">-- Selecione uma música para adicionar --</option>';
-
+    datalist.innerHTML = "";
     const available = state.songs.filter(song => !currentScaleSetlist.includes(song.id));
 
     available.forEach(song => {
         const opt = document.createElement("option");
-        opt.value = song.id;
-        opt.textContent = `${song.titulo} — ${song.artista} (${song.tom})`;
-        select.appendChild(opt);
+        opt.value = `${song.titulo} — ${song.artista} (${song.tom})`;
+        datalist.appendChild(opt);
     });
+
+    if (!searchInput.value) {
+        searchInput.value = "";
+    }
+}
+
+function getSongFromSearchValue(searchValue) {
+    const normalizedQuery = searchValue.trim().toLowerCase();
+    if (!normalizedQuery) return null;
+
+    const song = state.songs.find(item => item.titulo.toLowerCase() === normalizedQuery || item.artista.toLowerCase() === normalizedQuery);
+    if (song) return song;
+
+    return state.songs.find(item => item.titulo.toLowerCase().includes(normalizedQuery) || item.artista.toLowerCase().includes(normalizedQuery) || item.tom.toLowerCase().includes(normalizedQuery)) || null;
 }
 
 function addSongFromDropdown() {
-    const select = document.getElementById("setlist-dropdown");
-    if (!select) return;
-    const songId = select.value;
-    if (!songId) return;
+    const searchInput = document.getElementById("setlist-song-search");
+    if (!searchInput) return;
+    const song = getSongFromSearchValue(searchInput.value);
+    if (!song) return;
 
-    if (!currentScaleSetlist.includes(songId)) {
-        currentScaleSetlist.push(songId);
+    if (!currentScaleSetlist.includes(song.id)) {
+        currentScaleSetlist.push(song.id);
+        searchInput.value = "";
         renderSetlistBuilder();
     }
 }
@@ -1372,6 +1766,8 @@ function handleScaleSubmit(e) {
         hora: document.getElementById("escala-hora").value,
         tipo: document.getElementById("escala-tipo").value,
         obs: document.getElementById("escala-obs").value.trim(),
+        tema: document.getElementById("escala-tema").value.trim(),
+        versiculos: document.getElementById("escala-versiculos").value.trim(),
         
         ministro: document.getElementById("escala-ministro").value,
         teclado: document.getElementById("escala-teclado").value,

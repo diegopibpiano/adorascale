@@ -23,11 +23,12 @@
             <div class="sidebar-header">
                 <div class="logo-container">
                     <div class="logo-icon">
-                        <i data-lucide="music-4"></i>
+                        <i data-lucide="cross"></i>
                     </div>
                     <div class="logo-text">
                         <h2>AdoraScale</h2>
                         <spam>Ministério de Louvor</spam>
+                        <spam style="font-size: 0.7rem; color: var(--text-muted);">Igreja Batista Esperança</spam>
                     </div>
                 </div>
             </div>
@@ -293,6 +294,56 @@
 
                         <div class="grid-card">
                             <div class="card-header">
+                                <h3>Cadastros de Acesso</h3>
+                            </div>
+                            <div class="card-body">
+                                <p class="text-secondary mb-4">Cadastre usuários do sistema para liberar acesso ao painel e à confirmação de presença.</p>
+                                <form id="form-acesso" class="mb-4">
+                                    <input type="hidden" id="acesso-id">
+                                    <div class="form-group">
+                                        <label for="acesso-nome">Nome da pessoa *</label>
+                                        <input type="text" id="acesso-nome" required placeholder="Ex: João da Silva">
+                                    </div>
+                                    <div class="form-row">
+                                        <div class="form-group col-6">
+                                            <label for="acesso-usuario">Usuário *</label>
+                                            <input type="text" id="acesso-usuario" required placeholder="Ex: joao">
+                                        </div>
+                                        <div class="form-group col-6">
+                                            <label for="acesso-senha">Senha *</label>
+                                            <input type="password" id="acesso-senha" required placeholder="Digite a senha">
+                                        </div>
+                                    </div>
+                                    <div class="form-row">
+                                        <div class="form-group col-6">
+                                            <label for="acesso-role">Tipo de acesso</label>
+                                            <select id="acesso-role" class="form-select">
+                                                <option value="usuario">Usuário</option>
+                                                <option value="administrador">Administrador</option>
+                                            </select>
+                                        </div>
+                                        <div class="form-group col-6">
+                                            <label for="acesso-telefone">Telefone</label>
+                                            <input type="tel" id="acesso-telefone" placeholder="Ex: (11) 99999-9999">
+                                        </div>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="acesso-membro">Vincular a um membro da equipe</label>
+                                        <select id="acesso-membro" class="form-select">
+                                            <option value="">-- Nenhum vínculo --</option>
+                                        </select>
+                                    </div>
+                                    <div class="flex" style="display: flex; gap: 8px; flex-wrap: wrap;">
+                                        <button type="submit" class="btn btn-primary">Salvar Acesso</button>
+                                        <button type="button" class="btn btn-secondary" id="btn-limpar-acesso">Limpar</button>
+                                    </div>
+                                </form>
+                                <div id="acessos-list"></div>
+                            </div>
+                        </div>
+
+                        <div class="grid-card">
+                            <div class="card-header">
                                 <h3>Ações Administrativas</h3>
                             </div>
                             <div class="card-body">
@@ -405,6 +456,18 @@
                                 <span>Vocal</span>
                             </label>
                             <label class="checkbox-card">
+                                <input type="checkbox" name="funcoes" value="Vocal Tenor">
+                                <span>Vocal Tenor</span>
+                            </label>
+                            <label class="checkbox-card">
+                                <input type="checkbox" name="funcoes" value="Contralto">
+                                <span>Contralto</span>
+                            </label>
+                            <label class="checkbox-card">
+                                <input type="checkbox" name="funcoes" value="Soprano">
+                                <span>Soprano</span>
+                            </label>
+                            <label class="checkbox-card">
                                 <input type="checkbox" name="funcoes" value="Teclado">
                                 <span>Teclado</span>
                             </label>
@@ -479,6 +542,17 @@
                         <div class="form-group col-6">
                             <label for="escala-obs">Observações / Detalhes</label>
                             <input type="text" id="escala-obs" placeholder="Ex: Culto da Família, Santa Ceia, etc.">
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group col-6">
+                            <label for="escala-tema">Tema da Pregação</label>
+                            <input type="text" id="escala-tema" placeholder="Ex: A Graça de Deus">
+                        </div>
+                        <div class="form-group col-6">
+                            <label for="escala-versiculos">Versículos Base</label>
+                            <input type="text" id="escala-versiculos" placeholder="Ex: Romanos 3:23-24, Efésios 2:8-9">
                         </div>
                     </div>
 
@@ -559,9 +633,8 @@
                         <label>Selecione as músicas do culto (em ordem de execução):</label>
                         <div class="setlist-dropdown-container">
                             <div class="setlist-dropdown-row">
-                                <select id="setlist-dropdown" class="form-select">
-                                    <option value="">-- Selecione uma música para adicionar --</option>
-                                </select>
+                                <input id="setlist-song-search" class="form-select" list="setlist-songs-list" placeholder="Busque uma música pelo nome, artista ou tom" autocomplete="off">
+                                <datalist id="setlist-songs-list"></datalist>
                                 <button type="button" class="btn btn-primary btn-sm" onclick="addSongFromDropdown()">
                                     <i data-lucide="plus" style="width:14px; height:14px;"></i>
                                     <span>Adicionar</span>
@@ -587,29 +660,33 @@
         </div>
     </div>
 
-    <!-- 4. MODAL LOGIN (Níveis de Acesso) -->
-    <div id="modal-login" class="modal-overlay">
-        <div class="modal-content" style="max-width: 400px;">
-            <div class="modal-header">
-                <h3>Acesso Restrito (Painel Admin)</h3>
-                <button class="modal-close" id="modal-login-close">&times;</button>
-            </div>
-            <form id="form-login">
-                <div class="modal-body">
-                    <p class="text-secondary mb-4" style="font-size: 0.85rem;">Insira a senha de administrador para habilitar as funções de criação, edição e exclusão.</p>
-                    <div class="form-group">
-                        <label for="login-senha">Senha de Acesso</label>
-                        <input type="password" id="login-senha" required placeholder="Digite a senha...">
-                        <span class="form-help" style="margin-top: 4px;">Senha padrão para testes: <strong>adoracao123</strong></span>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" id="modal-login-cancel">Cancelar</button>
-                    <button type="submit" class="btn btn-primary">Entrar</button>
-                </div>
-            </form>
+    <!-- Updated login modal with username -->
+<div id="modal-login" class="modal-overlay">
+    <div class="modal-content" style="max-width: 400px;">
+        <div class="modal-header">
+            <h3>Acesso Restrito (Painel Admin)</h3>
+            <button class="modal-close" id="modal-login-close">&times;</button>
         </div>
+        <form id="form-login">
+            <div class="modal-body">
+                <p class="text-secondary mb-4" style="font-size: 0.85rem;">Insira seu login para habilitar as funções de criação, edição e exclusão.</p>
+                <div class="form-group">
+                    <label for="login-username">Usuário</label>
+                    <input type="text" id="login-username" required placeholder="admin ou user1...">
+                </div>
+                <div class="form-group">
+                    <label for="login-senha">Senha de Acesso</label>
+                    <input type="password" id="login-senha" required placeholder="Digite a senha...">
+                    <span class="form-help" style="margin-top: 4px;">Senha padrão: <strong>senha123</strong> (admin usa adoracao123)</span>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" id="modal-login-cancel">Cancelar</button>
+                <button type="submit" class="btn btn-primary">Entrar</button>
+            </div>
+        </form>
     </div>
+</div>
 
     <!-- App Logic Script -->
     <script src="app.js"></script>
