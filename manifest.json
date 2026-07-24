@@ -3,10 +3,24 @@
   "short_name": "AdoraScale",
   "description": "Aplicativo para controle de escalas, músicas e repertório do ministério de louvor.",
   "start_url": "./index.html",
+  "scope": "./",
   "display": "standalone",
   "background_color": "#0b0f19",
   "theme_color": "#6366f1",
   "orientation": "portrait-primary",
+  "categories": ["productivity", "music"],
+  "screenshots": [
+    {
+      "src": "icon-192.jpg",
+      "sizes": "192x192",
+      "form_factor": "narrow"
+    },
+    {
+      "src": "icon-512.jpg",
+      "sizes": "512x512",
+      "form_factor": "wide"
+    }
+  ],
   "icons": [
     {
       "src": "icon-192.jpg",
@@ -19,6 +33,22 @@
       "sizes": "512x512",
       "type": "image/jpeg",
       "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Escalas",
+      "short_name": "Escalas",
+      "description": "Gerenciar escalas do ministério",
+      "url": "./index.html?tab=escalas",
+      "icons": [{ "src": "icon-192.jpg", "sizes": "192x192" }]
+    },
+    {
+      "name": "Músicas",
+      "short_name": "Músicas",
+      "description": "Gerenciar repertório de músicas",
+      "url": "./index.html?tab=musicas",
+      "icons": [{ "src": "icon-192.jpg", "sizes": "192x192" }]
     }
   ]
 }

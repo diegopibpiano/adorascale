@@ -180,7 +180,21 @@ document.addEventListener("DOMContentLoaded", () => {
     initRole();
     initLucide();
     switchTab("dashboard");
+    registerServiceWorker();
 });
+
+// ==================== PWA SERVICE WORKER REGISTRATION ====================
+function registerServiceWorker() {
+    if ("serviceWorker" in navigator) {
+        navigator.serviceWorker.register("./sw.js").then((registration) => {
+            console.log("[PWA] Service Worker registered successfully", registration);
+        }).catch((error) => {
+            console.log("[PWA] Service Worker registration failed:", error);
+        });
+    } else {
+        console.log("[PWA] Service Workers not supported in this browser");
+    }
+}
 
 function initLucide() {
     if (typeof lucide !== 'undefined') {
