@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 {
   "name": "adorascale",
   "version": "1.0.0",
@@ -32,3 +33,39 @@
     "http-server": "^14.1.1"
   }
 }
+=======
+{
+  "name": "adorascale",
+  "version": "1.0.0",
+  "description": "AdoraScale - Progressive Web App para gestão de escalas de louvor",
+  "main": "app.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node server.js",
+    "start:https": "node server.js --https",
+    "start:port": "node server.js --port 3000",
+    "dev": "node server.js --https --port 8443",
+    "serve": "python -m http.server 8080"
+  },
+  "keywords": [
+    "pwa",
+    "progressive-web-app",
+    "escalas",
+    "louvor",
+    "ministério",
+    "música"
+  ],
+  "author": "AdoraScale",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/seu-usuario/adorascale.git"
+  },
+  "engines": {
+    "node": ">=12.0.0"
+  },
+  "devDependencies": {
+    "http-server": "^14.1.1"
+  }
+}
+>>>>>>> 5be5144ede3490ab0c8b0e5e3f848e7fcddb09c8
