@@ -179,6 +179,9 @@
                                 <input type="text" id="search-escalas" placeholder="Buscar escalas (tipo de culto, data)...">
                             </div>
                         </div>
+                        <button class="btn-icon mobile-user-btn" id="mobile-login-btn" title="Área Restrita / Login">
+                            <i data-lucide="user"></i>
+                        </button>
                         <button class="btn btn-primary admin-only" id="btn-nova-escala">
                             <i data-lucide="plus"></i>
                             <span>Nova Escala</span>
@@ -493,12 +496,20 @@
                                 <span>Bateria</span>
                             </label>
                             <label class="checkbox-card">
+                                <input type="checkbox" name="funcoes" value="Percussão">
+                                <span>Percussão</span>
+                            </label>
+                            <label class="checkbox-card">
                                 <input type="checkbox" name="funcoes" value="Som">
                                 <span>Som (Técnico)</span>
                             </label>
                             <label class="checkbox-card">
                                 <input type="checkbox" name="funcoes" value="Mídia">
                                 <span>Mídia / Projeção</span>
+                            </label>
+                            <label class="checkbox-card">
+                                <input type="checkbox" name="funcoes" value="Transmissão">
+                                <span>Transmissão</span>
                             </label>
                         </div>
                     </div>
@@ -601,6 +612,12 @@
                             </select>
                         </div>
                         <div class="form-group">
+                            <label for="escala-percussao">Percussão</label>
+                            <select id="escala-percussao" class="form-select select-membro" data-funcao="Percussão">
+                                <option value="">-- Selecione --</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
                             <label for="escala-vocal1">Vocal 1</label>
                             <select id="escala-vocal1" class="form-select select-membro" data-funcao="Vocal">
                                 <option value="">-- Selecione --</option>
@@ -627,6 +644,12 @@
                         <div class="form-group">
                             <label for="escala-midia">Mídia / Projeção</label>
                             <select id="escala-midia" class="form-select select-membro" data-funcao="Mídia">
+                                <option value="">-- Selecione --</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="escala-transmisao">Transmissão</label>
+                            <select id="escala-transmissao" class="form-select select-membro" data-funcao="Transmissão">
                                 <option value="">-- Selecione --</option>
                             </select>
                         </div>

@@ -123,11 +123,13 @@ const defaultMockData = {
             guitarra: "",
             baixo: "m4",
             bateria: "m5",
+            percussao: "",
             vocal1: "m6",
             vocal2: "",
             vocal3: "",
             som: "m7",
             midia: "m8",
+            transmissao: "",
             setlist: ["s1", "s2", "s6"],
             confirmacoes: {
                 "m3": "confirmado",
@@ -152,11 +154,13 @@ const defaultMockData = {
             guitarra: "",
             baixo: "m4",
             bateria: "",
+            percussao: "",
             vocal1: "",
             vocal2: "",
             vocal3: "",
             som: "m7",
             midia: "",
+            transmissao: "",
             setlist: ["s3", "s5"],
             confirmacoes: {
                 "m6": "pendente",
@@ -1288,11 +1292,13 @@ function renderScheduleCard(container, sc) {
             { label: "Guitarra", id: sc.guitarra },
             { label: "Contra-baixo", id: sc.baixo },
             { label: "Bateria", id: sc.bateria },
+            { label: "Percussão", id: sc.percussao },
             { label: "Vocal 1", id: sc.vocal1 },
             { label: "Vocal 2", id: sc.vocal2 },
             { label: "Vocal 3", id: sc.vocal3 },
             { label: "Som", id: sc.som },
-            { label: "Mídia/Projeção", id: sc.midia }
+            { label: "Mídia/Projeção", id: sc.midia },
+            { label: "Transmissão", id: sc.transmissao },
         ];
 
         let teamGridHtml = "";
@@ -1533,11 +1539,13 @@ function openScaleModal(scaleId = "") {
             document.getElementById("escala-guitarra").value = sc.guitarra || "";
             document.getElementById("escala-baixo").value = sc.baixo || "";
             document.getElementById("escala-bateria").value = sc.bateria || "";
+            document.getElementById("escala-percussao").value = sc.percussao || "";
             document.getElementById("escala-vocal1").value = sc.vocal1 || "";
             document.getElementById("escala-vocal2").value = sc.vocal2 || "";
             document.getElementById("escala-vocal3").value = sc.vocal3 || "";
             document.getElementById("escala-som").value = sc.som || "";
             document.getElementById("escala-midia").value = sc.midia || "";
+            document.getElementById("escala-transmissao").value = sc.transmissao || "";
 
             currentScaleSetlist = [...(sc.setlist || [])];
         }
@@ -1559,7 +1567,7 @@ function openScaleModal(scaleId = "") {
 
 // ==================== CONFIRMATION TOGGLE ====================
 function getRoleKeyForMember(sc, memberId) {
-    const positions = ["ministro", "teclado", "violao", "guitarra", "baixo", "bateria", "vocal1", "vocal2", "vocal3", "som", "midia"];
+    const positions = ["ministro", "teclado", "violao", "guitarra", "baixo", "bateria", "percussao", "vocal1", "vocal2", "vocal3", "som", "midia", "transmissao"];
     return positions.find(pos => sc[pos] === memberId) || null;
 }
 
@@ -1571,11 +1579,13 @@ function getRoleLabel(roleKey) {
         guitarra: "Guitarra",
         baixo: "Contra-baixo",
         bateria: "Bateria",
+        percussao: "Percussão",
         vocal1: "Vocal 1",
         vocal2: "Vocal 2",
         vocal3: "Vocal 3",
         som: "Som",
-        midia: "Mídia"
+        midia: "Mídia",
+        transmissao: "Transmissão"
     };
     return labels[roleKey] || "Função";
 }
@@ -1789,11 +1799,13 @@ function handleScaleSubmit(e) {
         guitarra: document.getElementById("escala-guitarra").value,
         baixo: document.getElementById("escala-baixo").value,
         bateria: document.getElementById("escala-bateria").value,
+        percussao: document.getElementById("escala-percussao").value,
         vocal1: document.getElementById("escala-vocal1").value,
         vocal2: document.getElementById("escala-vocal2").value,
         vocal3: document.getElementById("escala-vocal3").value,
         som: document.getElementById("escala-som").value,
         midia: document.getElementById("escala-midia").value,
+        transmissao: document.getElementById("escala-transmissao").value,
         
         setlist: [...currentScaleSetlist]
     };
@@ -1809,7 +1821,7 @@ function handleScaleSubmit(e) {
     } else {
         // Initialize confirmacoes for all assigned members as pendente
         const confirmacoes = {};
-        const positions = ['ministro', 'teclado', 'violao', 'guitarra', 'baixo', 'bateria', 'vocal1', 'vocal2', 'vocal3', 'som', 'midia'];
+        const positions = ['ministro', 'teclado', 'violao', 'guitarra', 'baixo', 'bateria', 'percusao', 'vocal1', 'vocal2', 'vocal3', 'som', 'midia', 'transmissao'];
         positions.forEach(pos => {
             if (scaleData[pos]) {
                 confirmacoes[scaleData[pos]] = "pendente";
@@ -1904,11 +1916,13 @@ function shareFullScale(scaleId) {
         { label: "Guitarra", name: getMemberNameText(sc.guitarra) },
         { label: "Contra-baixo", name: getMemberNameText(sc.baixo) },
         { label: "Bateria", name: getMemberNameText(sc.bateria) },
+        { laber: "Percussão", name: getMemberNameText(sc.percussao) },
         { label: "Vocal 1", name: getMemberNameText(sc.vocal1) },
         { label: "Vocal 2", name: getMemberNameText(sc.vocal2) },
         { label: "Vocal 3", name: getMemberNameText(sc.vocal3) },
         { label: "Som", name: getMemberNameText(sc.som) },
-        { label: "Mídia/Projeção", name: getMemberNameText(sc.midia) }
+        { label: "Mídia/Projeção", name: getMemberNameText(sc.midia) },
+        { laber: "Transmissão", name: getMemberNameText(sc.transmissao) }
     ].filter(r => r.name !== 'Não escalado');
 
     let teamStr = "";

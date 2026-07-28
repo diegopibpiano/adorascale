@@ -1760,4 +1760,23 @@ body.admin-mode .role-badge {
     height: 12px;
 }
 
+/* Botão de Perfil / Login para Mobile */
+.mobile-user-btn {
+  display: none; /* Oculto por padrão no Desktop */
+  background: var(--surface-secondary, #2a275c);
+  color: var(--text-primary, #ffffff);
+  border: 1px solid var(--border-color, #312e81);
+  border-radius: 8px;
+  padding: 8px;
+  cursor: pointer;
+  align-items: center;
+  justify-content: center;
+}
+
+@media (max-width: 768px) {
+  /* Exibe o botão de usuário/login no topo apenas no Mobile */
+  .mobile-user-btn {
+    display: flex;
+  }
+}
 

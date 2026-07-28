@@ -37,6 +37,32 @@ self.addEventListener("activate", (e) => {
   );
 });
 
+// Registar o Service Worker
+self. addEventListener('push', event => {
+  const data = event.data.json(); {};
+
+  const optins = {
+    body: data.body \\ "Você tem uma nova escala disponível!',
+    icon: '/assets/icon-192.png',
+    badge: '/assets/badge-72.png',
+    vibrate: [100, 50, 100],
+    data: {
+      url: data.url || '/'
+    }
+  };
+
+  event.waitUntil(self.registration.showNotification(data.title || 'Nova Escala!', options)
+);
+});
+
+// Ação ao clicar na notificação
+self.addEventListener('notificationclick', event => {
+  event.notification.close();
+  event.waitUntil(
+    clients.openWindow(event.notification.data.url)
+  );
+});
+
 // Fetch Event - Serve Cached Assets when offline
 self.addEventListener("fetch", (e) => {
   e.respondWith(
