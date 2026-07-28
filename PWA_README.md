@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 # AdoraScale - Progressive Web App (PWA)
 
 ## 📱 Sobre a Aplicação PWA
@@ -536,4 +535,3 @@ Para problemas com PWA:
 ---
 
 **AdoraScale PWA** - Pronto para instalar e usar offline! 🎵
->>>>>>> 5be5144ede3490ab0c8b0e5e3f848e7fcddb09c8

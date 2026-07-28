@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 # 🎵 AdoraScale - Progressive Web App
 
 **AdoraScale** é um aplicativo web progressivo (PWA) para gerenciar escalas de louvor, músicas e repertório do ministério em sua igreja.
@@ -516,4 +515,3 @@ Desenvolvido com ❤️ para ministérios de louvor
 **AdoraScale** - Gestão de Escalas de Louvor Simplificada 🎵
 
 Versão: 1.0.0 | Ultima atualização: 2026-07-24
->>>>>>> 5be5144ede3490ab0c8b0e5e3f848e7fcddb09c8
