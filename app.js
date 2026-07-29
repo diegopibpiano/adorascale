@@ -1,3 +1,17 @@
+// ==================== CONFIGURAÇÃO DO FIREBASE ====================
+const firebaseConfig = {
+  apiKey: "AIzaSyC6aTAQin74yqPDl6Q54uT42RvPamuFXMM",
+  authDomain: "adorascale.firebaseapp.com",
+  projectId: "adorascale",
+  storageBucket: "adorascale.firebasestorage.app",
+  messagingSenderId: "717015706908",
+  appId: "1:717015706908:web:aa2e944ee990580b791ed9"
+};
+
+// Inicializa o Firebase e o Firestore
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+
 // ==================== STATE MANAGEMENT ====================
 let state = {
     songs: [],
@@ -322,56 +336,66 @@ function handleLoginSubmit(e) {
     }
 }
 
-// Load state from LocalStorage or initialize with defaults
-function loadState() {
-    const songs = localStorage.getItem("adorascale_songs");
-    const members = localStorage.getItem("adorascale_members");
-    const schedules = localStorage.getItem("adorascale_schedules");
-    const users = localStorage.getItem("adorascale_users");
+// Salva uma coleção inteira no Firestore
+async function saveCollection(collectionName, dataArray) {
+    try {
+        const batch = db.batch();
+        
+        // Limpa registros anteriores para sincronizar a lista inteira
+        const snapshot = await db.collection(collectionName).get();
+        snapshot.docs.forEach((doc) => {
+            batch.delete(doc.ref);
+        });
 
-    if (songs && members && schedules) {
-        state.songs = JSON.parse(songs);
-        state.members = JSON.parse(members);
-        state.schedules = JSON.parse(schedules);
-        state.users = users ? JSON.parse(users) : buildDefaultUsers();
-    } else {
-        // Load default mock data
-        state.songs = [...defaultMockData.songs];
-        state.members = [...defaultMockData.members];
-        state.schedules = [...defaultMockData.schedules];
-        state.users = buildDefaultUsers();
-        saveState();
-    }
+        // Grava os novos registros
+        dataArray.forEach((item) => {
+            const docRef = db.collection(collectionName).doc(item.id ? String(item.id) : undefined);
+            batch.set(docRef, item);
+        });
 
-    const savedCurrentUser = sessionStorage.getItem("adorascale_currentUser");
-    if (savedCurrentUser) {
-        const parsedUser = JSON.parse(savedCurrentUser);
-        const matchedUser = state.users.find(user => user.id === parsedUser.id);
-        if (matchedUser) {
-            state.currentUser = matchedUser;
-            state.currentRole = matchedUser.role;
-        }
-    } else {
-        state.currentUser = null;
-        state.currentRole = "usuario";
+        await batch.commit();
+        console.log(`Coleção ${collectionName} sincronizada com sucesso.`);
+    } catch (error) {
+        console.error(`Erro ao salvar ${collectionName}:`, error);
     }
-    
-    // Sort items logically
-    sortStateData();
 }
 
+// Salva todo o estado da aplicação no Firebase
 function saveState() {
-    localStorage.setItem("adorascale_songs", JSON.stringify(state.songs));
-    localStorage.setItem("adorascale_members", JSON.stringify(state.members));
-    localStorage.setItem("adorascale_schedules", JSON.stringify(state.schedules));
-    localStorage.setItem("adorascale_users", JSON.stringify(state.users));
+    saveCollection("songs", appState.songs);
+    saveCollection("members", appState.members);
+    saveCollection("schedules", appState.schedules);
+    saveCollection("users", appState.users);
+}
 
-    if (state.currentUser) {
-        sessionStorage.setItem("adorascale_currentUser", JSON.stringify(state.currentUser));
-    } else {
-        sessionStorage.removeItem("adorascale_currentUser");
+// Carrega os dados do Firebase Firestore
+async function loadState() {
+    try {
+        const [songsSnap, membersSnap, schedulesSnap, usersSnap] = await Promise.all([
+            db.collection("songs").get(),
+            db.collection("members").get(),
+            db.collection("schedules").get(),
+            db.collection("users").get()
+        ]);
+
+        appState.songs = songsSnap.docs.map(doc => doc.data());
+        appState.members = membersSnap.docs.map(doc => doc.data());
+        appState.schedules = schedulesSnap.docs.map(doc => doc.data());
+        appState.users = usersSnap.docs.map(doc => doc.data());
+
+        // Se o banco estiver zerado no primeiro acesso, grava os Mocks iniciais
+        if (appState.songs.length === 0 && appState.members.length === 0) {
+            appState.songs = MOCK_SONGS;
+            appState.members = MOCK_MEMBERS;
+            appState.schedules = MOCK_SCHEDULES;
+            appState.users = MOCK_USERS;
+            saveState();
+        }
+
+        renderApp();
+    } catch (error) {
+        console.error("Erro ao carregar dados do Firebase:", error);
     }
-    sessionStorage.setItem("adorascale_role", state.currentRole || "usuario");
 }
 
 function sortStateData() {
