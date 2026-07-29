@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 {
   "name": "adorascale",
   "version": "1.0.0",
@@ -33,7 +32,6 @@
     "http-server": "^14.1.1"
   }
 }
-=======
 {
   "name": "adorascale",
   "version": "1.0.0",
@@ -68,4 +66,3 @@
     "http-server": "^14.1.1"
   }
 }
->>>>>>> 5be5144ede3490ab0c8b0e5e3f848e7fcddb09c8
