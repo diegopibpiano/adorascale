@@ -421,11 +421,11 @@ async function loadState() {
 
 function sortStateData() {
     // Sort songs by title
-    state.songs.sort((a, b) => a.titulo.localeCompare(b.titulo));
+    appState.songs.sort((a, b) => a.titulo.localeCompare(b.titulo));
     // Sort members by name
-    state.members.sort((a, b) => a.nome.localeCompare(b.nome));
+    appState.members.sort((a, b) => a.nome.localeCompare(b.nome));
     // Sort schedules by date and time
-    state.schedules.sort((a, b) => {
+    appState.schedules.sort((a, b) => {
         const dateA = new Date(`${a.data}T${a.hora}`);
         const dateB = new Date(`${b.data}T${b.hora}`);
         return dateA - dateB;
@@ -500,7 +500,7 @@ function setupEventListeners() {
     });
     document.getElementById("btn-limpar-dados").addEventListener("click", () => {
         if (confirm("ATENÇÃO: Deseja apagar todos os dados permanentemente? Essa ação não pode ser desfeita.")) {
-            state = {
+            appState = {
                 songs: [],
                 members: [],
                 schedules: [],
@@ -508,7 +508,7 @@ function setupEventListeners() {
                 currentUser: null,
                 currentRole: "usuario"
             };
-            saveState();
+            saveAppState();
             renderAll();
             showToast("Todos os dados foram apagados.", "danger");
         }
