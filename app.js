@@ -13,7 +13,7 @@ firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 
 // ==================== STATE MANAGEMENT ====================
-let state = {
+let appState = {
     songs: [],
     members: [],
     schedules: [],
@@ -192,7 +192,7 @@ let currentScaleSetlist = [];
 
 // ==================== APP INITIALIZATION ====================
 document.addEventListener("DOMContentLoaded", async () => {
-    await loadState();
+    await loadappState();
     setupEventListeners();
     updateLiveDate();
     initRole();
@@ -225,14 +225,14 @@ function initRole() {
     const savedCurrentUser = sessionStorage.getItem("adorascale_currentUser");
     if (savedCurrentUser) {
         const parsedUser = JSON.parse(savedCurrentUser);
-        const matchedUser = state.users.find(user => user.id === parsedUser.id);
+        const matchedUser = appState.users.find(user => user.id === parsedUser.id);
         if (matchedUser) {
-            state.currentUser = matchedUser;
-            state.currentRole = matchedUser.role;
+            appState.currentUser = matchedUser;
+            appState.currentRole = matchedUser.role;
         }
     } else {
-        state.currentUser = null;
-        state.currentRole = "usuario";
+        appState.currentUser = null;
+        appState.currentRole = "usuario";
     }
     updateRoleUI();
 }
@@ -245,7 +245,7 @@ function updateRoleUI() {
     const btnText = document.getElementById("btn-login-text");
     const btnIcon = document.querySelector("#btn-login-modal i");
 
-    if (state.currentRole === "administrador") {
+    if (appState.currentRole === "administrador") {
         body.classList.remove("user-mode");
         body.classList.add("admin-mode");
 
@@ -253,7 +253,7 @@ function updateRoleUI() {
             roleIcon.style.backgroundColor = "rgba(99, 102, 241, 0.15)";
             roleIcon.innerHTML = '<i data-lucide="unlock" style="width:16px; height:16px;"></i>';
         }
-        if (roleName) roleName.textContent = state.currentUser ? `Olá, ${state.currentUser.nome.split(" ")[0]}` : "Painel Admin";
+        if (roleName) roleName.textContent = appState.currentUser ? `Olá, ${appState.currentUser.nome.split(" ")[0]}` : "Painel Admin";
         if (roleBadge) {
             roleBadge.textContent = "Admin";
             roleBadge.className = "role-badge";
@@ -271,9 +271,9 @@ function updateRoleUI() {
             roleIcon.style.backgroundColor = "var(--secondary)";
             roleIcon.innerHTML = '<i data-lucide="lock" style="width:16px; height:16px;"></i>';
         }
-        if (roleName) roleName.textContent = state.currentUser ? `Olá, ${state.currentUser.nome.split(" ")[0]}` : "Modo Leitor";
+        if (roleName) roleName.textContent = appState.currentUser ? `Olá, ${appState.currentUser.nome.split(" ")[0]}` : "Modo Leitor";
         if (roleBadge) {
-            roleBadge.textContent = state.currentUser ? (state.currentUser.role === "administrador" ? "Admin" : "Usuário") : "Usuário";
+            roleBadge.textContent = appState.currentUser ? (appState.currentUser.role === "administrador" ? "Admin" : "Usuário") : "Usuário";
             roleBadge.className = "role-badge";
         }
         if (btnText) btnText.textContent = "Área Restrita";
@@ -293,13 +293,13 @@ function updateRoleUI() {
 }
 
 function getCurrentUserMemberId() {
-    return state.currentUser && state.currentUser.memberId ? state.currentUser.memberId : null;
+    return appState.currentUser && appState.currentUser.memberId ? appState.currentUser.memberId : null;
 }
 
-function toggleLoginState() {
-    if (state.currentUser) {
-        state.currentUser = null;
-        state.currentRole = "usuario";
+function toggleLoginappState() {
+    if (appState.currentUser) {
+        appState.currentUser = null;
+        appState.currentRole = "usuario";
         sessionStorage.removeItem("adorascale_currentUser");
         sessionStorage.removeItem("adorascale_role");
         updateRoleUI();
@@ -321,12 +321,12 @@ function handleLoginSubmit(e) {
     const username = usernameInput ? usernameInput.value.trim().toLowerCase() : "";
     const password = passwordInput ? passwordInput.value : "";
 
-    const user = state.users.find(item => item.username.toLowerCase() === username && item.password === password);
+    const user = appState.users.find(item => item.username.toLowerCase() === username && item.password === password);
 
     if (user) {
-        state.currentUser = user;
-        state.currentRole = user.role;
-        saveState();
+        appState.currentUser = user;
+        appState.currentRole = user.role;
+        saveappState();
         updateRoleUI();
         showToast(`Bem-vindo(a), ${user.nome}!`, "success");
         const modal = document.getElementById("modal-login");
@@ -361,7 +361,7 @@ async function saveCollection(collectionName, dataArray) {
 }
 
 // Salva todo o estado da aplicação no Firebase
-function saveState() {
+function saveappState() {
     saveCollection("songs", appState.songs);
     saveCollection("members", appState.members);
     saveCollection("schedules", appState.schedules);
@@ -369,7 +369,7 @@ function saveState() {
 }
 
 // Carrega os dados do Firebase Firestore
-async function loadState() {
+async function loadappState() {
     try {
         const [songsSnap, membersSnap, schedulesSnap, usersSnap] = await Promise.all([
             db.collection("songs").get(),
@@ -389,7 +389,7 @@ async function loadState() {
             appState.members = MOCK_MEMBERS;
             appState.schedules = MOCK_SCHEDULES;
             appState.users = MOCK_USERS;
-            await saveState(); // Garanta que esta função salve os dados no Firestore
+            await saveappState(); // Garanta que esta função salve os dados no Firestore
         } else {
             // FORÇA A ATUALIZAÇÃO DA SENHA DO ADMIN NO FIRESTORE
             const adminIndex = appState.users.findIndex(u => u.username === "admin");
@@ -410,7 +410,7 @@ async function loadState() {
             }
             
             // Atualiza o Firestore com a nova senha corrigida
-            await saveState();
+            await saveappState();
         }
 
         renderApp();
@@ -419,7 +419,7 @@ async function loadState() {
     }
 }
 
-function sortStateData() {
+function sortappStateData() {
     // Sort songs by title
     appState.songs.sort((a, b) => a.titulo.localeCompare(b.titulo));
     // Sort members by name
@@ -493,7 +493,7 @@ function setupEventListeners() {
     document.getElementById("btn-reset-demo").addEventListener("click", () => {
         if (confirm("Deseja realmente carregar os dados demonstrativos? Isso substituirá as alterações atuais.")) {
             localStorage.clear();
-            loadState();
+            loadappState();
             renderAll();
             showToast("Dados demonstrativos recarregados!", "info");
         }
@@ -515,7 +515,7 @@ function setupEventListeners() {
     });
 
     // Login triggers
-    document.getElementById("btn-login-modal").addEventListener("click", toggleLoginState);
+    document.getElementById("btn-login-modal").addEventListener("click", toggleLoginappState);
     document.getElementById("form-login").addEventListener("submit", handleLoginSubmit);
 }
 
@@ -588,7 +588,7 @@ function populateAccessMemberSelect() {
     const currentValue = select.value || "";
     select.innerHTML = '<option value="">-- Nenhum vínculo --</option>';
 
-    state.members.forEach(member => {
+    appState.members.forEach(member => {
         const option = document.createElement("option");
         option.value = member.id;
         option.textContent = `${member.nome} (${member.funcoes.join(", ")})`;
@@ -612,7 +612,7 @@ function renderUserAccesses() {
 
     container.innerHTML = "";
 
-    if (!state.users || state.users.length === 0) {
+    if (!appState.users || appState.users.length === 0) {
         container.innerHTML = '<p class="text-secondary">Nenhum acesso cadastrado.</p>';
         return;
     }
@@ -620,10 +620,10 @@ function renderUserAccesses() {
     const list = document.createElement("div");
     list.className = "escalas-container";
 
-    state.users.forEach(user => {
+    appState.users.forEach(user => {
         const card = document.createElement("div");
         card.className = "escala-card";
-        const member = state.members.find(item => item.id === user.memberId);
+        const member = appState.members.find(item => item.id === user.memberId);
         card.innerHTML = `
             <div class="escala-header">
                 <div class="escala-title-details">
@@ -654,7 +654,7 @@ function renderUserAccesses() {
 }
 
 function editAccessUser(userId) {
-    const user = state.users.find(item => item.id === userId);
+    const user = appState.users.find(item => item.id === userId);
     if (!user) return;
 
     const form = document.getElementById("form-acesso");
@@ -687,20 +687,20 @@ function handleAccessSubmit(e) {
         return;
     }
 
-    const duplicateUser = state.users.find(item => item.username.toLowerCase() === username && item.id !== id);
+    const duplicateUser = appState.users.find(item => item.username.toLowerCase() === username && item.id !== id);
     if (duplicateUser) {
         showToast("Esse nome de usuário já existe.", "danger");
         return;
     }
 
     if (id) {
-        const index = state.users.findIndex(item => item.id === id);
+        const index = appState.users.findIndex(item => item.id === id);
         if (index !== -1) {
-            state.users[index] = { ...state.users[index], nome, username, password, role, telefone, memberId };
+            appState.users[index] = { ...appState.users[index], nome, username, password, role, telefone, memberId };
             showToast("Acesso atualizado com sucesso.", "success");
         }
     } else {
-        state.users.push({
+        appState.users.push({
             id: `u_${Date.now()}`,
             nome,
             username,
@@ -712,13 +712,13 @@ function handleAccessSubmit(e) {
         showToast("Novo acesso cadastrado com sucesso.", "success");
     }
 
-    saveState();
+    saveAppState();
     renderSettings();
     resetAccessForm();
 
-    if (state.currentUser && state.currentUser.id === id) {
-        state.currentUser = state.users.find(item => item.id === id) || null;
-        state.currentRole = state.currentUser ? state.currentUser.role : "usuario";
+    if (appState.currentUser && appState.currentUser.id === id) {
+        appState.currentUser = appState.users.find(item => item.id === id) || null;
+        appState.currentRole = appState.currentUser ? appState.currentUser.role : "usuario";
         updateRoleUI();
     }
 }
@@ -726,15 +726,15 @@ function handleAccessSubmit(e) {
 function deleteAccessUser(userId) {
     if (!confirm("Deseja realmente remover este acesso?")) return;
 
-    const targetUser = state.users.find(item => item.id === userId);
+    const targetUser = appState.users.find(item => item.id === userId);
     if (!targetUser) return;
 
-    state.users = state.users.filter(item => item.id !== userId);
+    appState.users = appState.users.filter(item => item.id !== userId);
     saveState();
 
-    if (state.currentUser && state.currentUser.id === userId) {
-        state.currentUser = null;
-        state.currentRole = "usuario";
+    if (appState.currentUser && appState.currentUser.id === userId) {
+        appState.currentUser = null;
+        appState.currentRole = "usuario";
         sessionStorage.removeItem("adorascale_currentUser");
         sessionStorage.removeItem("adorascale_role");
         updateRoleUI();
@@ -775,13 +775,13 @@ function showToast(message, type = "success") {
 // ==================== DASHBOARD SECTION ====================
 function renderDashboard() {
     // 1. Render Stats
-    document.getElementById("stat-total-songs").textContent = state.songs.length;
-    document.getElementById("stat-total-members").textContent = state.members.length;
-    document.getElementById("stat-total-schedules").textContent = state.schedules.length;
+    document.getElementById("stat-total-songs").textContent = appState.songs.length;
+    document.getElementById("stat-total-members").textContent = appState.members.length;
+    document.getElementById("stat-total-schedules").textContent = appState.schedules.length;
 
     // Calculate most sung songs and top song
     const songCount = {};
-    state.schedules.forEach(sc => {
+    appState.schedules.forEach(sc => {
         if (sc.setlist && Array.isArray(sc.setlist)) {
             sc.setlist.forEach(songId => {
                 songCount[songId] = (songCount[songId] || 0) + 1;
@@ -790,7 +790,7 @@ function renderDashboard() {
     });
 
     const sortedSongsByUsage = Object.keys(songCount).map(id => {
-        const song = state.songs.find(s => s.id === id);
+        const song = appState.songs.find(s => s.id === id);
         return {
             id,
             count: songCount[id],
@@ -838,10 +838,10 @@ function renderDashboard() {
     timelineContainer.innerHTML = "";
 
     const todayStr = new Date().toISOString().split('T')[0];
-    let upcomingSchedules = state.schedules.filter(sc => sc.data >= todayStr);
+    let upcomingSchedules = appState.schedules.filter(sc => sc.data >= todayStr);
     
     if (upcomingSchedules.length === 0) {
-        const latestSchedules = state.schedules.slice(-3);
+        const latestSchedules = appState.schedules.slice(-3);
         if (latestSchedules.length === 0) {
             timelineContainer.innerHTML = `<p class="text-secondary text-center py-4">Nenhuma escala programada.</p>`;
         } else {
@@ -882,7 +882,7 @@ function createTimelineItem(sc) {
     div.className = "timeline-item";
     
     // Get lead initials or name
-    const ministroObj = state.members.find(m => m.id === sc.ministro);
+    const ministroObj = appState.members.find(m => m.id === sc.ministro);
     const ministroName = ministroObj ? ministroObj.nome : "Sem Ministro";
 
     // Gather participants count
@@ -891,7 +891,7 @@ function createTimelineItem(sc) {
 
     let avatarsHtml = "";
     activeParticipants.slice(0, 4).forEach(id => {
-        const m = state.members.find(memb => memb.id === id);
+        const m = appState.members.find(memb => memb.id === id);
         if (m) {
             const initials = m.nome.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
             avatarsHtml += `<div class="member-dot-avatar" title="${m.nome}">${initials}</div>`;
@@ -927,7 +927,7 @@ function createTimelineItem(sc) {
 // ==================== SONG DIRECTORY (REPERTORIO) ====================
 function renderSongs() {
     const tableBody = document.getElementById("músicas-list-table");
-    const emptyState = document.getElementById("repertorio-empty");
+    const emptyappState = document.getElementById("repertorio-empty");
     const searchQuery = document.getElementById("search-músicas").value.toLowerCase();
     const filterTom = document.getElementById("filter-tom").value;
 
@@ -935,7 +935,7 @@ function renderSongs() {
 
     // Count how many times each song has been sung
     const songUsage = {};
-    state.schedules.forEach(sc => {
+    appState.schedules.forEach(sc => {
         if (sc.setlist) {
             sc.setlist.forEach(sid => {
                 songUsage[sid] = (songUsage[sid] || 0) + 1;
@@ -943,7 +943,7 @@ function renderSongs() {
         }
     });
 
-    const filteredSongs = state.songs.filter(song => {
+    const filteredSongs = appState.songs.filter(song => {
         const matchesSearch = song.titulo.toLowerCase().includes(searchQuery) ||
                              song.artista.toLowerCase().includes(searchQuery) ||
                              song.tom.toLowerCase().includes(searchQuery);
@@ -954,9 +954,9 @@ function renderSongs() {
     });
 
     if (filteredSongs.length === 0) {
-        emptyState.classList.remove("hidden");
+        emptyappState.classList.remove("hidden");
     } else {
-        emptyState.classList.add("hidden");
+        emptyappState.classList.add("hidden");
         filteredSongs.forEach(song => {
             const tr = document.createElement("tr");
             const usageCount = songUsage[song.id] || 0;
@@ -1010,7 +1010,7 @@ function openSongModal(songId = "") {
 
     if (songId) {
         document.getElementById("modal-musica-title").textContent = "Editar Música";
-        const song = state.songs.find(s => s.id === songId);
+        const song = appState.songs.find(s => s.id === songId);
         if (song) {
             document.getElementById("musica-id").value = song.id;
             document.getElementById("musica-titulo").value = song.titulo;
@@ -1045,9 +1045,9 @@ function handleSongSubmit(e) {
 
     if (id) {
         // Edit mode
-        const index = state.songs.findIndex(s => s.id === id);
+        const index = appState.songs.findIndex(s => s.id === id);
         if (index !== -1) {
-            state.songs[index] = { id, ...songData };
+            appState.songs[index] = { id, ...songData };
             showToast("Música atualizada com sucesso!");
         }
     } else {
@@ -1056,39 +1056,39 @@ function handleSongSubmit(e) {
             id: 's_' + Date.now(),
             ...songData
         };
-        state.songs.push(newSong);
+        appState.songs.push(newSong);
         showToast("Música adicionada ao repertório!");
     }
 
-    saveState();
-    sortStateData();
+    saveAppState();
+    sortappStateData();
     document.getElementById("modal-musica").classList.remove("active");
     renderSongs();
     renderDashboard();
 }
 
 function deleteSong(songId) {
-    const song = state.songs.find(s => s.id === songId);
+    const song = appState.songs.find(s => s.id === songId);
     if (!song) return;
 
     // Check if the song is currently used in any schedule
-    const isUsed = state.schedules.some(sc => sc.setlist && sc.setlist.includes(songId));
+    const isUsed = appState.schedules.some(sc => sc.setlist && sc.setlist.includes(songId));
     const confirmMsg = isUsed 
         ? `A música "${song.titulo}" está escalada em alguns cultos. Se você excluí-la, ela será removida dessas escalas também. Deseja continuar?`
         : `Deseja realmente excluir a música "${song.titulo}"?`;
 
     if (confirm(confirmMsg)) {
         // Remove from schedules setlists
-        state.schedules.forEach(sc => {
+        appState.schedules.forEach(sc => {
             if (sc.setlist) {
                 sc.setlist = sc.setlist.filter(id => id !== songId);
             }
         });
 
-        // Remove from state songs
-        state.songs = state.songs.filter(s => s.id !== songId);
+        // Remove from appState songs
+        appState.songs = appState.songs.filter(s => s.id !== songId);
         
-        saveState();
+        saveAppState();
         showToast("Música excluída com sucesso.", "info");
         renderSongs();
         renderDashboard();
@@ -1098,20 +1098,20 @@ function deleteSong(songId) {
 // ==================== MEMBERS MANAGEMENT (EQUIPE) ====================
 function renderMembers() {
     const grid = document.getElementById("membros-list-grid");
-    const emptyState = document.getElementById("equipe-empty");
+    const emptyappState = document.getElementById("equipe-empty");
     const searchQuery = document.getElementById("search-membros").value.toLowerCase();
 
     grid.innerHTML = "";
 
-    const filteredMembers = state.members.filter(m => {
+    const filteredMembers = appState.members.filter(m => {
         return m.nome.toLowerCase().includes(searchQuery) ||
                m.funcoes.some(f => f.toLowerCase().includes(searchQuery));
     });
 
     if (filteredMembers.length === 0) {
-        emptyState.classList.remove("hidden");
+        emptyappState.classList.remove("hidden");
     } else {
-        emptyState.classList.add("hidden");
+        emptyappState.classList.add("hidden");
         filteredMembers.forEach(m => {
             const card = document.createElement("div");
             card.className = "member-card";
@@ -1176,7 +1176,7 @@ function openMemberModal(memberId = "") {
 
     if (memberId) {
         document.getElementById("modal-membro-title").textContent = "Editar Integrante";
-        const member = state.members.find(m => m.id === memberId);
+        const member = appState.members.find(m => m.id === memberId);
         if (member) {
             document.getElementById("membro-id").value = member.id;
             document.getElementById("membro-nome").value = member.nome;
@@ -1216,9 +1216,9 @@ function handleMemberSubmit(e) {
     const memberData = { nome, telefone, funcoes };
 
     if (id) {
-        const index = state.members.findIndex(m => m.id === id);
+        const index = appState.members.findIndex(m => m.id === id);
         if (index !== -1) {
-            state.members[index] = { id, ...memberData };
+            appState.members[index] = { id, ...memberData };
             showToast("Integrante atualizado com sucesso!");
         }
     } else {
@@ -1226,23 +1226,23 @@ function handleMemberSubmit(e) {
             id: 'm_' + Date.now(),
             ...memberData
         };
-        state.members.push(newMember);
+        appState.members.push(newMember);
         showToast("Novo integrante cadastrado!");
     }
 
-    saveState();
-    sortStateData();
+    saveappState();
+    sortappStateData();
     document.getElementById("modal-membro").classList.remove("active");
     renderMembers();
     renderDashboard();
 }
 
 function deleteMember(memberId) {
-    const member = state.members.find(m => m.id === memberId);
+    const member = appState.members.find(m => m.id === memberId);
     if (!member) return;
 
     // Check if member is scheduled in any cult
-    const scheduledCuts = state.schedules.filter(sc => {
+    const scheduledCuts = appState.schedules.filter(sc => {
         const positions = ['ministro', 'teclado', 'violao', 'guitarra', 'baixo', 'bateria', 'vocal1', 'vocal2', 'vocal3', 'som', 'midia'];
         return positions.some(pos => sc[pos] === memberId);
     });
@@ -1254,7 +1254,7 @@ function deleteMember(memberId) {
 
     if (confirm(confirmMsg)) {
         // Remove from schedules roles
-        state.schedules.forEach(sc => {
+        appState.schedules.forEach(sc => {
             const positions = ['ministro', 'teclado', 'violao', 'guitarra', 'baixo', 'bateria', 'vocal1', 'vocal2', 'vocal3', 'som', 'midia'];
             positions.forEach(pos => {
                 if (sc[pos] === memberId) {
@@ -1264,9 +1264,9 @@ function deleteMember(memberId) {
         });
 
         // Remove member
-        state.members = state.members.filter(m => m.id !== memberId);
+        appState.members = appState.members.filter(m => m.id !== memberId);
         
-        saveState();
+        saveappState();
         showToast("Integrante removido.", "info");
         renderMembers();
         renderDashboard();
@@ -1280,7 +1280,7 @@ function renderSchedules() {
 
     container.innerHTML = "";
 
-    const filteredSchedules = state.schedules.filter(sc => {
+    const filteredSchedules = appState.schedules.filter(sc => {
         return sc.tipo.toLowerCase().includes(searchQuery) ||
                sc.data.toLowerCase().includes(searchQuery) ||
                (sc.obs && sc.obs.toLowerCase().includes(searchQuery));
@@ -1288,7 +1288,7 @@ function renderSchedules() {
 
     if (filteredSchedules.length === 0) {
         container.innerHTML = `
-            <div class="empty-state">
+            <div class="empty-appState">
                 <i data-lucide="calendar"></i>
                 <h4>Nenhuma escala encontrada</h4>
                 <p>Crie uma nova escala de culto para organizar a equipe e a setlist.</p>
@@ -1325,7 +1325,7 @@ function renderScheduleCard(container, sc) {
 
         // Map roles
         const getMemberName = (id) => {
-            const m = state.members.find(memb => memb.id === id);
+            const m = appState.members.find(memb => memb.id === id);
             return m ? m.nome : '<span class="text-muted" style="font-weight: normal; font-style: italic;">Não escalado</span>';
         };
 
@@ -1351,7 +1351,7 @@ function renderScheduleCard(container, sc) {
         if (!sc.confirmacoes) sc.confirmacoes = {};
 
         roles.forEach(role => {
-            const member = role.id ? state.members.find(m => m.id === role.id) : null;
+            const member = role.id ? appState.members.find(m => m.id === role.id) : null;
             let nameHtml = "";
             let waBtnHtml = "";
             let confirmBadgeHtml = "";
@@ -1368,7 +1368,7 @@ function renderScheduleCard(container, sc) {
                 };
                 const cfg = statusConfig[status];
                 const currentMemberId = getCurrentUserMemberId();
-                const isAdmin = state.currentRole === "administrador";
+                const isAdmin = appState.currentRole === "administrador";
                 const isOwnMember = !!(currentMemberId && currentMemberId === member.id);
                 const canManageThis = isOwnMember || isAdmin;
                 const clickHandler = canManageThis
@@ -1390,7 +1390,7 @@ function renderScheduleCard(container, sc) {
                 const setlistSongs = [];
                 if (sc.setlist && sc.setlist.length > 0) {
                     sc.setlist.forEach((songId, idx) => {
-                        const song = state.songs.find(s => s.id === songId);
+                        const song = appState.songs.find(s => s.id === songId);
                         if (song) {
                             setlistSongs.push(`${idx + 1}. ${song.titulo} (${song.tom})`);
                         }
@@ -1435,7 +1435,7 @@ function renderScheduleCard(container, sc) {
             setlistHtml = `<p class="text-secondary" style="font-style: italic; font-size: 0.85rem;">Nenhuma música na setlist.</p>`;
         } else {
             sc.setlist.forEach((songId, index) => {
-                const song = state.songs.find(s => s.id === songId);
+                const song = appState.songs.find(s => s.id === songId);
                 if (song) {
                     setlistHtml += `
                         <div class="escala-song-item">
@@ -1529,8 +1529,8 @@ function populateScaleModalSelects() {
         select.innerHTML = '<option value="">-- Selecione --</option>';
 
         // Filter members who perform this function
-        const qualified = state.members.filter(m => m.funcoes.includes(targetFuncao));
-        const others = state.members.filter(m => !m.funcoes.includes(targetFuncao));
+        const qualified = appState.members.filter(m => m.funcoes.includes(targetFuncao));
+        const others = appState.members.filter(m => !m.funcoes.includes(targetFuncao));
 
         if (qualified.length > 0) {
             const groupQualified = document.createElement("optgroup");
@@ -1567,7 +1567,7 @@ function openScaleModal(scaleId = "") {
 
     if (scaleId) {
         document.getElementById("modal-escala-title").textContent = "Editar Escala de Culto";
-        const sc = state.schedules.find(s => s.id === scaleId);
+        const sc = appState.schedules.find(s => s.id === scaleId);
         if (sc) {
             document.getElementById("escala-id").value = sc.id;
             document.getElementById("escala-data").value = sc.data;
@@ -1644,13 +1644,13 @@ function notifyUnavailableMembers(sc, member) {
     const positions = roleKey && roleKey.startsWith("vocal") ? ["vocal1", "vocal2", "vocal3"] : roleKey ? [roleKey] : [];
     const recipients = [];
 
-    state.members.forEach(candidate => {
+    appState.members.forEach(candidate => {
         if (candidate.id === member.id) return;
         const isSameRole = positions.some(pos => sc[pos] === candidate.id);
         if (isSameRole) recipients.push(candidate);
     });
 
-    state.users.filter(user => user.role === "administrador").forEach(user => {
+    appState.users.filter(user => user.role === "administrador").forEach(user => {
         const recipientPhone = user.telefone;
         if (recipientPhone) {
             recipients.push({ id: `user:${user.id}`, nome: user.nome, telefone: recipientPhone });
@@ -1676,13 +1676,13 @@ function notifyUnavailableMembers(sc, member) {
 }
 
 function toggleConfirmation(scaleId, memberId) {
-    const sc = state.schedules.find(s => s.id === scaleId);
+    const sc = appState.schedules.find(s => s.id === scaleId);
     if (!sc) return;
 
-    const member = state.members.find(m => m.id === memberId);
+    const member = appState.members.find(m => m.id === memberId);
     if (!member) return;
 
-    const isAdmin = state.currentRole === "administrador";
+    const isAdmin = appState.currentRole === "administrador";
     const currentMemberId = getCurrentUserMemberId();
     const isOwnMember = !!currentMemberId && currentMemberId === memberId;
 
@@ -1698,7 +1698,7 @@ function toggleConfirmation(scaleId, memberId) {
     const nextIndex = (cycle.indexOf(current) + 1) % cycle.length;
     sc.confirmacoes[memberId] = cycle[nextIndex];
 
-    saveState();
+    saveappState();
     renderSchedules();
     renderDashboard();
 
@@ -1722,7 +1722,7 @@ function populateSetlistDropdown() {
     if (!datalist || !searchInput) return;
 
     datalist.innerHTML = "";
-    const available = state.songs.filter(song => !currentScaleSetlist.includes(song.id));
+    const available = appState.songs.filter(song => !currentScaleSetlist.includes(song.id));
 
     available.forEach(song => {
         const opt = document.createElement("option");
@@ -1739,10 +1739,10 @@ function getSongFromSearchValue(searchValue) {
     const normalizedQuery = searchValue.trim().toLowerCase();
     if (!normalizedQuery) return null;
 
-    const song = state.songs.find(item => item.titulo.toLowerCase() === normalizedQuery || item.artista.toLowerCase() === normalizedQuery);
+    const song = appState.songs.find(item => item.titulo.toLowerCase() === normalizedQuery || item.artista.toLowerCase() === normalizedQuery);
     if (song) return song;
 
-    return state.songs.find(item => item.titulo.toLowerCase().includes(normalizedQuery) || item.artista.toLowerCase().includes(normalizedQuery) || item.tom.toLowerCase().includes(normalizedQuery)) || null;
+    return appState.songs.find(item => item.titulo.toLowerCase().includes(normalizedQuery) || item.artista.toLowerCase().includes(normalizedQuery) || item.tom.toLowerCase().includes(normalizedQuery)) || null;
 }
 
 function addSongFromDropdown() {
@@ -1773,7 +1773,7 @@ function renderSetlistBuilderSelected() {
     emptyMsg.classList.add("hidden");
 
     currentScaleSetlist.forEach((songId, index) => {
-        const song = state.songs.find(s => s.id === songId);
+        const song = appState.songs.find(s => s.id === songId);
         if (!song) return;
 
         const div = document.createElement("div");
@@ -1856,11 +1856,11 @@ function handleScaleSubmit(e) {
     };
 
     if (id) {
-        const index = state.schedules.findIndex(sc => sc.id === id);
+        const index = appState.schedules.findIndex(sc => sc.id === id);
         if (index !== -1) {
             // Preserve existing confirmacoes
-            const existingConfirmacoes = state.schedules[index].confirmacoes || {};
-            state.schedules[index] = { id, ...scaleData, confirmacoes: existingConfirmacoes };
+            const existingConfirmacoes = appState.schedules[index].confirmacoes || {};
+            appState.schedules[index] = { id, ...scaleData, confirmacoes: existingConfirmacoes };
             showToast("Escala de culto atualizada!");
         }
     } else {
@@ -1877,12 +1877,12 @@ function handleScaleSubmit(e) {
             ...scaleData,
             confirmacoes
         };
-        state.schedules.push(newScale);
+        appState.schedules.push(newScale);
         showToast("Escala criada com sucesso!");
     }
 
-    saveState();
-    sortStateData();
+    saveappState();
+    sortappStateData();
     document.getElementById("modal-escala").classList.remove("active");
     renderSchedules();
     renderDashboard();
@@ -1890,8 +1890,8 @@ function handleScaleSubmit(e) {
 
 function deleteScale(scaleId) {
     if (confirm("Deseja realmente excluir esta escala de culto?")) {
-        state.schedules = state.schedules.filter(s => s.id !== scaleId);
-        saveState();
+        appState.schedules = appState.schedules.filter(s => s.id !== scaleId);
+        saveappState();
         showToast("Escala excluída.", "info");
         renderSchedules();
         renderDashboard();
@@ -1900,7 +1900,7 @@ function deleteScale(scaleId) {
 
 // ==================== SETTINGS (BACKUP) ====================
 function exportBackup() {
-    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(state, null, 2));
+    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(appState, null, 2));
     const downloadAnchor = document.createElement('a');
     downloadAnchor.setAttribute("href", dataStr);
     
@@ -1920,13 +1920,13 @@ function importBackup(e) {
 
     fileReader.onload = function(event) {
         try {
-            const importedState = JSON.parse(event.target.result);
+            const importedappState = JSON.parse(event.target.result);
             
             // Basic structure validation
-            if (importedState.songs && importedState.members && importedState.schedules) {
-                state = importedState;
-                saveState();
-                sortStateData();
+            if (importedappState.songs && importedappState.members && importedappState.schedules) {
+                appState = importedappState;
+                saveappState();
+                sortappStateData();
                 renderAll();
                 showToast("Backup importado com sucesso!", "success");
             } else {
@@ -1943,14 +1943,14 @@ function importBackup(e) {
 
 // ==================== WHATSAPP GROUP SHARING ====================
 function shareFullScale(scaleId) {
-    const sc = state.schedules.find(s => s.id === scaleId);
+    const sc = appState.schedules.find(s => s.id === scaleId);
     if (!sc) return;
 
     const formattedDate = new Date(`${sc.data}T${sc.hora}`).toLocaleDateString('pt-BR');
     
     // Gather filled positions
     const getMemberNameText = (id) => {
-        const m = state.members.find(memb => memb.id === id);
+        const m = appState.members.find(memb => memb.id === id);
         return m ? m.nome : 'Não escalado';
     };
 
@@ -1978,7 +1978,7 @@ function shareFullScale(scaleId) {
     const setlistSongs = [];
     if (sc.setlist && sc.setlist.length > 0) {
         sc.setlist.forEach((songId, idx) => {
-            const song = state.songs.find(s => s.id === songId);
+            const song = appState.songs.find(s => s.id === songId);
             if (song) {
                 setlistSongs.push(`${idx + 1}. ${song.titulo} (${song.tom})`);
             }
