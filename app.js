@@ -191,8 +191,8 @@ const defaultMockData = {
 let currentScaleSetlist = [];
 
 // ==================== APP INITIALIZATION ====================
-document.addEventListener("DOMContentLoaded", () => {
-    loadState();
+document.addEventListener("DOMContentLoaded", async () => {
+    await loadState();
     setupEventListeners();
     updateLiveDate();
     initRole();
@@ -389,12 +389,33 @@ async function loadState() {
             appState.members = MOCK_MEMBERS;
             appState.schedules = MOCK_SCHEDULES;
             appState.users = MOCK_USERS;
-            saveState();
+            await saveState(); // Garanta que esta função salve os dados no Firestore
+        } else {
+            // FORÇA A ATUALIZAÇÃO DA SENHA DO ADMIN NO FIRESTORE
+            const adminIndex = appState.users.findIndex(u => u.username === "admin");
+            const adminData = {
+                id: "u_admin",
+                username: "admin",
+                password: "adoracao123",
+                nome: "Administrador",
+                role: "administrador",
+                telefone: "11999990000",
+                memberId: ""
+            };
+
+            if (adminIndex !== -1) {
+                appState.users[adminIndex] = adminData;
+            } else {
+                appState.users.unshift(adminData);
+            }
+            
+            // Atualiza o Firestore com a nova senha corrigida
+            await saveState();
         }
 
         renderApp();
     } catch (error) {
-        console.error("Erro ao carregar dados do Firebase:", error);
+        console.error("Erro ao carregando dados do Firebase:", error);
     }
 }
 
