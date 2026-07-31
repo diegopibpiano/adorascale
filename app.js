@@ -6,11 +6,13 @@ const firebaseConfig = {
   storageBucket: "adorascale.firebasestorage.app",
   messagingSenderId: "717015706908",
   appId: "1:717015706908:web:aa2e944ee990580b791ed9"
-};
+const SERVER_KEY = "YOUR_SERVER_KEY"; // Placeholder for Firebase Cloud Messaging server key
+;
 
 // Inicializa o Firebase e o Firestore
 firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
+const auth = firebase.auth();
 
 // ==================== STATE MANAGEMENT ====================
 let appState = {
@@ -34,7 +36,7 @@ function buildDefaultUsers() {
     }];
 
     const memberIds = ["m1", "m2", "m3", "m4", "m5", "m6", "m7", "m8"];
-    for (let i = 1; i <= 99; i++) {
+    for (let i = 1; i <= 199; i++) {
         const memberId = memberIds[(i - 1) % memberIds.length] || "";
         users.push({
             id: `u${i}`,
@@ -314,26 +316,40 @@ function toggleLoginappState() {
     }
 }
 
+// Handle login using Firebase Auth
 function handleLoginSubmit(e) {
-    e.preventDefault();
-    const usernameInput = document.getElementById("login-username");
-    const passwordInput = document.getElementById("login-senha");
-    const username = usernameInput ? usernameInput.value.trim().toLowerCase() : "";
-    const password = passwordInput ? passwordInput.value : "";
+  e.preventDefault();
+  const usernameInput = document.getElementById('login-username');
+  const passwordInput = document.getElementById('login-senha');
+  const email = usernameInput ? usernameInput.value.trim() : '';
+  const password = passwordInput ? passwordInput.value : '';
 
-    const user = appState.users.find(item => item.username.toLowerCase() === username && item.password === password);
-
-    if (user) {
-        appState.currentUser = user;
-        appState.currentRole = user.role;
-        saveappState();
+  auth.signInWithEmailAndPassword(email, password)
+    .then((userCredential) => {
+      const user = userCredential.user;
+      // Find matching appState user by email (username field)
+      const matched = appState.users.find(u => u.username.toLowerCase() === email.toLowerCase());
+      if (matched) {
+        appState.currentUser = matched;
+        appState.currentRole = matched.role;
+        sessionStorage.setItem('adorascale_currentUser', JSON.stringify(matched));
         updateRoleUI();
-        showToast(`Bem-vindo(a), ${user.nome}!`, "success");
-        const modal = document.getElementById("modal-login");
-        if (modal) modal.classList.remove("active");
-    } else {
-        showToast("Login ou senha incorretos!", "danger");
-    }
+        showToast(`Bem-vindo(a), ${matched.nome}!`, 'success');
+        const modal = document.getElementById('modal-login');
+        if (modal) modal.classList.remove('active');
+        // Save auth state maybe
+      } else {
+        showToast('Usuário não cadastrado no aplicativo.', 'danger');
+      }
+    })
+    .catch((error) => {
+      console.error('Login error:', error);
+      showToast('Login ou senha incorretos!', 'danger');
+    });
+}
+
+// Duplicate login handler removed; authentication now handled via Firebase Auth.
+
 }
 
 // Salva uma coleção inteira no Firestore
@@ -378,60 +394,68 @@ async function saveappState() {
   await saveCollection("users", appState.users);
 }
 
-// CARREGA O ESTADO DA APLICAÇÃO E INICIALIZA A INTERFACE
+// Load application state from Firestore
 async function loadappState() {
-    try {
-        // FORÇA A ATUALIZAÇÃO DA SENHA DO ADMIN NO FIRESTORE (COM TRAVA DE SEGURANÇA)
-        if (!Array.isArray(appState.users)) {
-            appState.users = [];
-        }
-
-        const adminIndex = appState.users.findIndex(u => u && u.username === "admin");
-        const adminData = {
-            id: "u_admin",
-            username: "admin",
-            password: "adoracao123",
-            nome: "Administrador",
-            role: "administrador",
-            telefone: "11999990000",
-            memberId: ""
-        };
-
-        if (adminIndex !== -1) {
-            appState.users[adminIndex] = adminData;
-        } else {
-            appState.users.unshift(adminData);
-        }
-
-        // Atualiza o Firestore com a nova senha corrigida
-        await saveappState();
-
-        // ORDENAÇÃO SEGURA DOS DADOS (DENTRO DO TRY)
-        if (Array.isArray(appState.songs)) {
-            appState.songs.sort((a, b) => (a.titulo || '').localeCompare(b.titulo || ''));
-        }
-        if (Array.isArray(appState.members)) {
-            appState.members.sort((a, b) => (a.nome || '').localeCompare(b.nome || ''));
-        }
-        if (Array.isArray(appState.schedules)) {
-            appState.schedules.sort((a, b) => {
-                const dateA = new Date(`${a.data}T${a.hora}`);
-                const dateB = new Date(`${b.data}T${b.hora}`);
-                return dateA - dateB;
-            });
-        }
-
-// RENDERIZA TODAS AS TELAS COM OS DADOS CARREGADOS
-        if (typeof renderDashboard === 'function') renderDashboard();
-        if (typeof renderSongs === 'function') renderSongs();
-        if (typeof renderMembers === 'function') renderMembers();
-        if (typeof renderSchedules === 'function') renderSchedules();
-
-        setupNavigation(); // Ativa os eventos do menu
-
-    } catch (error) {
-        console.error("Erro ao carregar dados do Firebase:", error);
+  try {
+    // Fetch collections from Firestore
+    const collections = ['songs', 'members', 'schedules', 'users'];
+    for (const coll of collections) {
+      const snapshot = await db.collection(coll).get();
+      const data = [];
+      snapshot.forEach(doc => {
+        data.push(doc.data());
+      });
+      if (data.length > 0) {
+        appState[coll] = data;
+      }
     }
+    // Ensure admin user exists (hardcoded)
+    const adminEmail = 'admin'; // using username field as email placeholder
+    const adminIndex = appState.users.findIndex(u => u.username === adminEmail);
+    const adminData = {
+      id: "u_admin",
+      username: "admin",
+      password: "adoracao123",
+      nome: "Administrador",
+      role: "administrador",
+      telefone: "11999990000",
+      memberId: ""
+    };
+    if (adminIndex !== -1) {
+      appState.users[adminIndex] = adminData;
+    } else {
+      appState.users.unshift(adminData);
+    }
+    // If any collection still empty, fallback to default mock data
+    if (!appState.songs || appState.songs.length === 0) appState.songs = defaultMockData.songs;
+    if (!appState.members || appState.members.length === 0) appState.members = defaultMockData.members;
+    if (!appState.schedules || appState.schedules.length === 0) appState.schedules = defaultMockData.schedules;
+    // Sort data
+    if (Array.isArray(appState.songs)) {
+      appState.songs.sort((a, b) => (a.titulo || '').localeCompare(b.titulo || ''));
+    }
+    if (Array.isArray(appState.members)) {
+      appState.members.sort((a, b) => (a.nome || '').localeCompare(b.nome || ''));
+    }
+    if (Array.isArray(appState.schedules)) {
+      appState.schedules.sort((a, b) => {
+        const dateA = new Date(`${a.data}T${a.hora}`);
+        const dateB = new Date(`${b.data}T${b.hora}`);
+        return dateA - dateB;
+      });
+    }
+    // Render UI
+    if (typeof renderDashboard === 'function') renderDashboard();
+    if (typeof renderSongs === 'function') renderSongs();
+    if (typeof renderMembers === 'function') renderMembers();
+    if (typeof renderSchedules === 'function') renderSchedules();
+    setupNavigation();
+  } catch (error) {
+    console.error("Erro ao carregar dados do Firebase:", error);
+    // Fallback to mock data if Firestore fails
+    appState = { ...defaultMockData, users: buildDefaultUsers(), currentUser: null, currentRole: "usuario" };
+    renderAll();
+  }
 }
 
 // NAVEGAÇÃO E RENDERIZAÇÃO AUTOMÁTICA
@@ -784,13 +808,23 @@ function handleAccessSubmit(e) {
 }
 
 function deleteAccessUser(userId) {
+    // Only admin can delete accesses
+    if (appState.currentRole !== "administrador") {
+        showToast("Apenas administradores podem remover acessos.", "danger");
+        return;
+    }
     if (!confirm("Deseja realmente remover este acesso?")) return;
 
     const targetUser = appState.users.find(item => item.id === userId);
     if (!targetUser) return;
 
+    // Delete from Firestore
+    if (typeof db !== "undefined") {
+        db.collection('users').doc(userId).delete().catch(err => console.error("Error deleting user access:", err));
+    }
+
     appState.users = appState.users.filter(item => item.id !== userId);
-    saveState();
+    saveappState();
 
     if (appState.currentUser && appState.currentUser.id === userId) {
         appState.currentUser = null;
@@ -1950,6 +1984,9 @@ function handleScaleSubmit(e) {
         };
         appState.schedules.push(newScale);
         showToast("Escala criada com sucesso!");
+        // Trigger push notification to participants (placeholder implementation)
+        sendPushNotification(newScale);
+
     }
 
     saveappState();
@@ -1959,7 +1996,54 @@ function handleScaleSubmit(e) {
     renderDashboard();
 }
 
-function deleteScale(scaleId) {
+function sendPushNotification(scale) {
+    // Collect participant member IDs from the scale positions
+    const participantMemberIds = [];
+    const positions = ['ministro', 'teclado', 'violao', 'guitarra', 'baixo', 'bateria', 'percussao', 'vocal1', 'vocal2', 'vocal3', 'som', 'midia', 'transmissao'];
+    positions.forEach(pos => {
+        if (scale[pos]) {
+            participantMemberIds.push(scale[pos]);
+        }
+    });
+
+    // Map member IDs to user FCM tokens (assumes each user may have a fcmToken field)
+    const tokens = participantMemberIds.map(memberId => {
+        const user = appState.users.find(u => u.memberId === memberId);
+        return user && user.fcmToken ? user.fcmToken : null;
+    }).filter(t => t);
+
+    if (tokens.length === 0) {
+        console.warn('No FCM tokens found for scale participants. Notification not sent.');
+        return;
+    }
+
+    const payload = {
+        registration_ids: tokens,
+        data: {
+            title: 'Nova escala programada',
+            body: `Nova escala para ${scale.data} às ${scale.hora} - ${scale.tipo}`,
+            scaleId: scale.id
+        }
+    };
+
+    fetch('https://fcm.googleapis.com/fcm/send', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `key=${SERVER_KEY}`
+        },
+        body: JSON.stringify(payload)
+    })
+    .then(response => {
+        if (!response.ok) {
+            console.error('FCM request failed', response.statusText);
+        }
+        return response.json();
+    })
+    .then(data => console.log('FCM response', data))
+    .catch(err => console.error('FCM error', err));
+}
+
     if (confirm("Deseja realmente excluir esta escala de culto?")) {
         appState.schedules = appState.schedules.filter(s => s.id !== scaleId);
         saveappState();
