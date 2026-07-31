@@ -1,83 +1,64 @@
-const CACHE_NAME = "adorascale-cache-v1";
-const ASSETS = [
-  "./",
-  "./index.html",
-  "./styles.css",
-  "./app.js",
-  "./manifest.json",
-  "./icon-192.jpg",
-  "./icon-512.jpg",
-  "https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap",
-  "https://unpkg.com/lucide@latest"
+// Importa bibliotecas do Firebase Messaging para o Service Worker
+importScripts('https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js');
+importScripts('https://www.gstatic.com/firebasejs/9.23.0/firebase-messaging-compat.js');
+
+const CACHE_NAME = 'adorascale-cache-v1';
+const ASSETS_TO_CACHE = [
+  './',
+  './index.html',
+  './styles.css',
+  './app.js',
+  './manifest.json',
+  './icon-192.jpg'
 ];
 
-// Install Event - Caching Assets
-self.addEventListener("install", (e) => {
-  e.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => {
-      console.log("[Service Worker] Caching all static assets");
-      return cache.addAll(ASSETS);
-    }).then(() => self.skipWaiting())
-  );
-});
-
-// Activate Event - Clean up old caches
-self.addEventListener("activate", (e) => {
-  e.waitUntil(
-    caches.keys().then((keys) => {
-      return Promise.all(
-        keys.map((key) => {
-          if (key !== CACHE_NAME) {
-            console.log("[Service Worker] Removing old cache", key);
-            return caches.delete(key);
-          }
-        })
-      );
-    }).then(() => self.clients.claim())
-  );
-});
-
-// Registar o Service Worker
-self. addEventListener('push', event => {
-  const data = event.data.json(); {};
-
-  const optins = {
-    body: data.body \\ "Você tem uma nova escala disponível!',
-    icon: '/assets/icon-192.png',
-    badge: '/assets/badge-72.png',
-    vibrate: [100, 50, 100],
-    data: {
-      url: data.url || '/'
-    }
-  };
-
-  event.waitUntil(self.registration.showNotification(data.title || 'Nova Escala!', options)
-);
-});
-
-// Ação ao clicar na notificação
-self.addEventListener('notificationclick', event => {
-  event.notification.close();
+// Instalação do Cache Offline
+self.addEventListener('install', (event) => {
   event.waitUntil(
-    clients.openWindow(event.notification.data.url)
+    caches.open(CACHE_NAME).then((cache) => cache.addAll(ASSETS_TO_CACHE))
   );
 });
 
-// Fetch Event - Serve Cached Assets when offline
-self.addEventListener("fetch", (e) => {
-  e.respondWith(
-    caches.match(e.request).then((cachedResponse) => {
-      if (cachedResponse) {
-        return cachedResponse;
-      }
-      
-      // Fallback to Network
-      return fetch(e.request).catch(() => {
-        // If it's a page request, return index.html as fallback
-        if (e.request.mode === "navigate") {
-          return caches.match("./index.html");
-        }
-      });
+// Ativação e limpeza de caches antigos
+self.addEventListener('activate', (event) => {
+  event.waitUntil(
+    caches.keys().then((keys) =>
+      Promise.all(
+        keys.filter((key) => key !== CACHE_NAME).map((key) => caches.delete(key))
+      )
+    )
+  );
+});
+
+// Interceptação de requisições para suporte offline
+self.addEventListener('fetch', (event) => {
+  event.respondWith(
+    caches.match(event.request).then((cachedResponse) => {
+      return cachedResponse || fetch(event.request);
     })
   );
+});
+
+// Configuração do Firebase Messaging no Service Worker
+firebase.initializeApp({
+  apiKey: "AIzaSyC6aTAQin74yqPDl6Q54uT42RvPamuFXMM",
+  authDomain: "adorascale.firebaseapp.com",
+  projectId: "adorascale",
+  storageBucket: "adorascale.firebasestorage.app",
+  messagingSenderId: "717015706908",
+  appId: "1:717015706908:web:aa2e944ee990580b791ed9"
+});
+
+const messaging = firebase.messaging();
+
+// Manipulador de notificações PUSH em segundo plano
+messaging.onBackgroundMessage((payload) => {
+  const notificationTitle = payload.notification.title || 'AdoraScale Update';
+  const notificationOptions = {
+    body: payload.notification.body || 'Você possui uma nova atualização na escala.',
+    icon: './icon-192.jpg',
+    badge: './icon-192.jpg'
+  };
+
+  self.registration.showNotification(notificationTitle, notificationOptions);
 });

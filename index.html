@@ -719,6 +719,7 @@
 <!-- SDKs do Firebase v9 via CDN -->
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-messaging-compat.js"></script>
 
     <!-- App Logic Script -->
     <script src="app.js"></script>
@@ -730,7 +731,7 @@
                     .then(reg => console.log("Service Worker registrado com sucesso!", reg.scope))
                     .catch(err => console.log("Falha ao registrar o Service Worker:", err));
             });
-        }
+        }    
     </script>
 </body>
 </html>
