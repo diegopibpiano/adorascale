@@ -1335,27 +1335,38 @@ function deleteMember(memberId) {
 
 // ==================== SCHEDULES CONTROL (ESCALAS) ====================
 function renderSchedules() {
-    const container = document.getElementById("escalas-list");
-    const searchQuery = document.getElementById("search-escalas").value.toLowerCase();
+    // 1. Tenta encontrar o container no DOM (ajuste os IDs conforme o Passo 1)
+    const container = document.getElementById('schedules-list') || 
+                      document.getElementById('schedulesList') ||
+                      document.querySelector('#schedules .list-container') ||
+                      document.querySelector('#schedules');
 
-    container.innerHTML = "";
+    if (!container) {
+        console.error("ERRO: Container de escalas não foi encontrado no HTML!");
+        return;
+    }
 
-    const filteredSchedules = appState.schedules.filter(sc => {
-        return sc.tipo.toLowerCase().includes(searchQuery) ||
-               sc.data.toLowerCase().includes(searchQuery) ||
-               (sc.obs && sc.obs.toLowerCase().includes(searchQuery));
-    });
-
-    if (filteredSchedules.length === 0) {
+    // 2. Se não houver escalas no appState
+    if (!appState.schedules || appState.schedules.length === 0) {
         container.innerHTML = `
-            <div class="empty-appState">
-                <i data-lucide="calendar"></i>
-                <h4>Nenhuma escala encontrada</h4>
-                <p>Crie uma nova escala de culto para organizar a equipe e a setlist.</p>
+            <div class="empty-state">
+                <p>Nenhuma escala cadastrada ainda.</p>
             </div>
         `;
-        initLucide();
         return;
+    }
+
+    // 3. Desenha a lista de escalas no container
+    container.innerHTML = appState.schedules.map(schedule => `
+        <div class="schedule-card" data-id="${schedule.id}">
+            <h3>${schedule.title || schedule.date || 'Escala'}</h3>
+            <p>${schedule.description || ''}</p>
+        </div>
+    `).join('');
+
+    // 4. Re-inicializa ícones (evita sumir ícones após renderizar)
+    if (typeof lucide !== 'undefined' && lucide.createIcons) {
+        lucide.createIcons();
     }
 
     // Group schedules by month
