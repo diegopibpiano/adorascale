@@ -347,25 +347,35 @@ async function saveCollection(collectionName, dataArray) {
             batch.delete(doc.ref);
         });
 
-        // Grava os novos registros
-        dataArray.forEach((item) => {
-            const docRef = db.collection(collectionName).doc(item.id ? String(item.id) : undefined);
-            batch.set(docRef, item);
-        });
+// Grava os novos registros com proteção contra undefined
+    const itemsToSave = Array.isArray(dataArray) ? dataArray : [];
+    
+    itemsToSave.forEach((item) => {
+        const docRef = item.id 
+            ? db.collection(collectionName).doc(String(item.id)) 
+            : db.collection(collectionName).doc();
+        batch.set(docRef, item);
+    });
 
-        await batch.commit();
-        console.log(`Coleção ${collectionName} sincronizada com sucesso.`);
-    } catch (error) {
-        console.error(`Erro ao salvar ${collectionName}:`, error);
-    }
+    await batch.commit();
+    console.log(`Coleção ${collectionName} sincronizada com sucesso.`);
+  } catch (error) {
+    console.error(`Erro ao salvar ${collectionName}:`, error);
+  }
 }
 
 // Salva todo o estado da aplicação no Firebase
-function saveappState() {
-    saveCollection("songs", appState.songs);
-    saveCollection("members", appState.members);
-    saveCollection("schedules", appState.schedules);
-    saveCollection("users", appState.users);
+async function saveappState() {
+  // Garante que nenhuma propriedade do appState seja undefined
+  appState.songs = appState.songs || [];
+  appState.members = appState.members || [];
+  appState.schedules = appState.schedules || [];
+  appState.users = appState.users || [];
+
+  await saveCollection("songs", appState.songs);
+  await saveCollection("members", appState.members);
+  await saveCollection("schedules", appState.schedules);
+  await saveCollection("users", appState.users);
 }
 
 // Carrega os dados do Firebase Firestore
@@ -413,7 +423,6 @@ async function loadappState() {
             await saveappState();
         }
 
-        renderApp();
     } catch (error) {
         console.error("Erro ao carregando dados do Firebase:", error);
     }
