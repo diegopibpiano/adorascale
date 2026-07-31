@@ -1,12 +1,3 @@
-/* ==========================================================================
-   AdoraScale - App Core Engine
-   Features:
-   - Firebase Realtime Firestore Synchronization (onSnapshot)
-   - PWA & Web Push Notification (FCM) Support
-   - 2-Week Advanced Schedule Confirmation Reminder
-   - Scalable state management supporting 200+ active users
-   ========================================================================== */
-
 // ==================== CONFIGURAÇÃO DO FIREBASE ====================
 const firebaseConfig = {
   apiKey: "AIzaSyC6aTAQin74yqPDl6Q54uT42RvPamuFXMM",
@@ -17,53 +8,215 @@ const firebaseConfig = {
   appId: "1:717015706908:web:aa2e944ee990580b791ed9"
 };
 
-// Inicialização das Instâncias do Firebase
-if (!firebase.apps.length) {
-    firebase.initializeApp(firebaseConfig);
-}
+// Inicializa o Firebase e o Firestore
+firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
-
 let messaging = null;
+
 if (firebase.messaging.isSupported()) {
     messaging = firebase.messaging();
 }
 
-// ==================== ESTADO DA APLICAÇÃO (STATE MANAGEMENT) ====================
+// ==================== STATE MANAGEMENT ====================
 let appState = {
     songs: [],
     members: [],
     schedules: [],
     users: [],
     currentUser: null,
-    currentRole: "usuario" // "admin" ou "usuario"
+    currentRole: "usuario"
 };
 
-let isInitialLoad = true;
+let isInitialLoad = true; // Flag para indicar se é o primeiro carregamento da aplicação
 
-// ==================== INICIALIZAÇÃO DA APLICAÇÃO ====================
+function buildDefaultUsers() {
+    const users = [{
+        id: "u_admin",
+        username: "admin",
+        password: "adoracao123",
+        nome: "Administrador",
+        role: "administrador",
+        telefone: "11999990000",
+        memberId: ""
+    }];
+
+    const memberIds = ["m1", "m2", "m3", "m4", "m5", "m6", "m7", "m8"];
+    for (let i = 1; i <= 99; i++) {
+        const memberId = memberIds[(i - 1) % memberIds.length] || "";
+        users.push({
+            id: `u${i}`,
+            username: `user${i}`,
+            password: "senha123",
+            nome: `Usuário ${i}`,
+            role: "usuario",
+            telefone: `119${String(i).padStart(8, "0")}`,
+            memberId
+        });
+    }
+
+    return users;
+}
+
+// Default Mock Data
+const defaultMockData = {
+    songs: [
+        {
+            id: "s1",
+            titulo: "A Casa é Sua",
+            artista: "Casa Worship",
+            tom: "G",
+            bpm: 74,
+            linkDrive: "https://drive.google.com/file/d/1_Cifra_A_Casa_E_Sua",
+            linkVideo: "https://www.youtube.com/watch?v=21LPl9622d0",
+            observacoes: "Começo suave só teclado e ministro. A bateria entra forte na segunda parte do refrão."
+        },
+        {
+            id: "s2",
+            titulo: "Yeshua",
+            artista: "Alessandro Vilas Boas",
+            tom: "A",
+            bpm: 68,
+            linkDrive: "https://drive.google.com/file/d/1_Cifra_Yeshua",
+            linkVideo: "https://www.youtube.com/watch?v=n577yV379e4",
+            observacoes: "Espontâneo longo após o refrão. Ficar atento às indicações do ministro."
+        },
+        {
+            id: "s3",
+            titulo: "O Escudo",
+            artista: "Grupo Elo / Voz da Verdade",
+            tom: "F",
+            bpm: 80,
+            linkDrive: "https://drive.google.com/file/d/1_Cifra_O_Escudo",
+            linkVideo: "https://www.youtube.com/watch?v=F_fV17u6211",
+            observacoes: "Introdução marcante do teclado e violão. Vocal entra em uníssono."
+        },
+        {
+            id: "s4",
+            titulo: "Lindo És",
+            artista: "David Brymer",
+            tom: "Em",
+            bpm: 72,
+            linkDrive: "https://drive.google.com/file/d/1_Cifra_Lindo_Es",
+            linkVideo: "https://www.youtube.com/watch?v=Cq_tGki3k8E",
+            observacoes: "Fazer a transição suave para 'Só Quero Ver Você'."
+        },
+        {
+            id: "s5",
+            titulo: "Vim Para Adorar-te",
+            artista: "Adoração e Adoradores",
+            tom: "E",
+            bpm: 76,
+            linkDrive: "https://drive.google.com/file/d/1_Cifra_Vim_Para_Adorar_Te",
+            linkVideo: "https://www.youtube.com/watch?v=mC145p2o58o",
+            observacoes: "Tom original é E. O vocal feminino lidera."
+        },
+        {
+            id: "s6",
+            titulo: "A Ele a Glória",
+            artista: "Diante do Trono",
+            tom: "C",
+            bpm: 65,
+            linkDrive: "https://drive.google.com/file/d/1_Cifra_A_Ele_A_Gloria",
+            linkVideo: "https://www.youtube.com/watch?v=xTf43t61111",
+            observacoes: "Clímax de adoração. Todos os instrumentos sobem o tom na última estrofe."
+        }
+    ],
+    members: [
+        { id: "m1", nome: "Gabriel Silva", telefone: "11999991111", funcoes: ["Teclado", "Vocal"] },
+        { id: "m2", nome: "Lucas Rodrigues", telefone: "11999992222", funcoes: ["Violão", "Guitarra"] },
+        { id: "m3", nome: "Ana Costa", telefone: "11999993333", funcoes: ["Ministro(a)", "Vocal"] },
+        { id: "m4", nome: "Mateus Santos", telefone: "11999994444", funcoes: ["Baixo"] },
+        { id: "m5", nome: "Thiago Oliveira", telefone: "11999995555", funcoes: ["Bateria"] },
+        { id: "m6", nome: "Rebeca Lima", telefone: "11999996666", funcoes: ["Ministro(a)", "Vocal"] },
+        { id: "m7", nome: "Felipe Almeida", telefone: "11999997777", funcoes: ["Som"] },
+        { id: "m8", nome: "Karina Souza", telefone: "11999998888", funcoes: ["Mídia"] }
+    ],
+    schedules: [
+        {
+            id: "sc1",
+            data: "2026-07-19",
+            hora: "19:00",
+            tipo: "Culto de Domingo",
+            obs: "Culto de Celebração e Santa Ceia",
+            ministro: "m3",
+            teclado: "m1",
+            violao: "m2",
+            guitarra: "",
+            baixo: "m4",
+            bateria: "m5",
+            percussao: "",
+            vocal1: "m6",
+            vocal2: "",
+            vocal3: "",
+            som: "m7",
+            midia: "m8",
+            transmissao: "",
+            setlist: ["s1", "s2", "s6"],
+            confirmacoes: {
+                "m3": "confirmado",
+                "m1": "confirmado",
+                "m2": "pendente",
+                "m4": "pendente",
+                "m5": "confirmado",
+                "m6": "confirmado",
+                "m7": "pendente",
+                "m8": "confirmado"
+            }
+        },
+        {
+            id: "sc2",
+            data: "2026-07-22",
+            hora: "19:30",
+            tipo: "Culto de Ensino",
+            obs: "Estudo Bíblico nas Quartas",
+            ministro: "m6",
+            teclado: "m1",
+            violao: "m2",
+            guitarra: "",
+            baixo: "m4",
+            bateria: "",
+            percussao: "",
+            vocal1: "",
+            vocal2: "",
+            vocal3: "",
+            som: "m7",
+            midia: "",
+            transmissao: "",
+            setlist: ["s3", "s5"],
+            confirmacoes: {
+                "m6": "pendente",
+                "m1": "pendente",
+                "m2": "indisponivel",
+                "m4": "pendente",
+                "m7": "confirmado"
+            }
+        }
+    ]
+};
+
+// Temporary scale creation state for setlist
+let currentScaleSetlist = [];
+
+// ==================== APP INITIALIZATION ====================
 document.addEventListener("DOMContentLoaded", async () => {
     setupEventListeners();
     updateLiveDate();
     registerServiceWorker();
-    setupRealtimeListeners(); // Conectividade em tempo real com Firestore
+    setupRealtimeListeners(); // Sincronização automática em tempo real
     initRole();
-    if (typeof lucide !== "undefined") {
-        lucide.createIcons();
-    }
+    initLucide();
     switchTab("dashboard");
     requestNotificationPermission();
 });
 
-// ==================== PWA & NOTIFICAÇÕES (FCM) ====================
+// ==================== PWA SERVICE WORKER REGISTRATION ====================
 function registerServiceWorker() {
     if ("serviceWorker" in navigator) {
-        navigator.serviceWorker.register("./sw.js")
-            .then((registration) => {
-                console.log("[PWA] Service Worker registrado com sucesso:", registration.scope);
-            })
-            .catch((error) => {
-                console.error("[PWA] Falha ao registrar Service Worker:", error);
-            });
+        navigator.serviceWorker.register("./sw.js").then((registration) => {
+            console.log("[PWA] Service Worker registered successfully", registration);
+        }).catch((error) => {
+            console.log("[PWA] Service Worker registration failed:", error);
+        });
     }
 }
 
@@ -72,330 +225,1793 @@ async function requestNotificationPermission() {
     try {
         const permission = await Notification.requestPermission();
         if (permission === 'granted') {
-            const token = await messaging.getToken();
+            const token = await messaging.getToken({
+                vapidKey: 'YOUR_VAPID_KEY_HERE' // Substitua com sua VAPID Key gerada no Firebase Console se utilizar Push via servidor
+            });
             if (token && appState.currentUser) {
-                // Registra/atualiza o Token Push do usuário logado no Firestore
-                await db.collection("users").doc(appState.currentUser.id).update({ 
-                    fcmToken: token,
-                    lastActive: firebase.firestore.FieldValue.serverTimestamp()
-                });
+                // Registra token FCM no perfil do usuário no Firestore
+                db.collection("users").doc(appState.currentUser.id).update({ fcmToken: token });
             }
         }
     } catch (err) {
-        console.warn("[FCM] Permissão de notificação negada ou não configurada:", err);
+        console.log("Permissão de notificação negada ou não suportada.", err);
     }
 }
 
-// ==================== SINCRONIZAÇÃO EM TEMPO REAL (REALTIME LISTENERS) ====================
-function setupRealtimeListeners() {
-    // Sincronização em tempo real de Músicas
-    db.collection("songs").onSnapshot((snapshot) => {
-        appState.songs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        renderSongs();
-        renderDashboard();
-    }, (error) => console.error("Erro no listener de músicas:", error));
-
-    // Sincronização em tempo real de Membros
-    db.collection("members").onSnapshot((snapshot) => {
-        appState.members = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        renderMembers();
-        renderDashboard();
-    }, (error) => console.error("Erro no listener de membros:", error));
-
-    // Sincronização em tempo real de Usuários
-    db.collection("users").onSnapshot((snapshot) => {
-        appState.users = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        renderSettings();
-    }, (error) => console.error("Erro no listener de usuários:", error));
-
-    // Sincronização em tempo real de Escalas
-    db.collection("schedules").onSnapshot((snapshot) => {
-        const previousCount = appState.schedules.length;
-        appState.schedules = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        
-        sortAppStateData();
-        renderSchedules();
-        renderDashboard();
-
-        // Notificação visual em tempo real quando uma nova escala for adicionada
-        if (!isInitialLoad && snapshot.docs.length > previousCount) {
-            showToast("Uma nova escala de culto foi inserida!", "info");
-            if (Notification.permission === "granted") {
-                new Notification("Nova Escala Publicada!", {
-                    body: "Uma nova escala de culto foi adicionada ao AdoraScale.",
-                    icon: "./icon-192.jpg"
-                });
-            }
+// ==================== ROLE-BASED ACCESS CONTROL ====================
+function initRole() {
+    const savedCurrentUser = sessionStorage.getItem("adorascale_currentUser");
+    if (savedCurrentUser) {
+        const parsedUser = JSON.parse(savedCurrentUser);
+        const matchedUser = appState.users.find(user => user.id === parsedUser.id);
+        if (matchedUser) {
+            appState.currentUser = matchedUser;
+            appState.currentRole = matchedUser.role;
         }
-        
-        isInitialLoad = false;
-        checkUpcomingSchedulesReminder(); // Executa checagem de lembretes
-    }, (error) => console.error("Erro no listener de escalas:", error));
-}
-
-// Ordenação dos dados
-function sortAppStateData() {
-    appState.schedules.sort((a, b) => new Date(`${a.data}T${a.hora || '00:00'}`) - new Date(`${b.data}T${b.hora || '00:00'}`));
-    appState.songs.sort((a, b) => (a.titulo || '').localeCompare(b.titulo || ''));
-    appState.members.sort((a, b) => (a.nome || '').localeCompare(b.nome || ''));
-}
-
-// ==================== OPERAÇÕES NO FIRESTORE (PERSISTÊNCIA) ====================
-async function saveDocument(collectionName, data) {
-    try {
-        const docId = data.id || db.collection(collectionName).doc().id;
-        const itemToSave = { ...data, id: docId, updatedAt: firebase.firestore.FieldValue.serverTimestamp() };
-        await db.collection(collectionName).doc(docId).set(itemToSave, { merge: true });
-        showToast("Dados salvos com sucesso!", "success");
-    } catch (error) {
-        console.error(`Erro ao salvar documento em [${collectionName}]:`, error);
-        showToast("Erro ao salvar no servidor.", "danger");
+    } else {
+        appState.currentUser = null;
+        appState.currentRole = "usuario";
     }
+    updateRoleUI();
 }
 
-async function deleteDocument(collectionName, id) {
-    try {
-        await db.collection(collectionName).doc(id).delete();
-        showToast("Item removido com sucesso!", "warning");
-    } catch (error) {
-        console.error(`Erro ao remover documento [${id}] de [${collectionName}]:`, error);
-        showToast("Erro ao excluir do servidor.", "danger");
-    }
-}
+function updateRoleUI() {
+    const body = document.body;
+    const roleIcon = document.getElementById("sidebar-role-icon");
+    const roleName = document.getElementById("sidebar-role-name");
+    const roleBadge = document.getElementById("sidebar-role-badge");
+    const btnText = document.getElementById("btn-login-text");
+    const btnIcon = document.querySelector("#btn-login-modal i");
 
-// ==================== SISTEMA DE LEMBRETE (2 SEMANAS DE ANTECEDÊNCIA) ====================
-function checkUpcomingSchedulesReminder() {
-    if (!appState.currentUser || !appState.currentUser.memberId) return;
+    if (appState.currentRole === "administrador") {
+        body.classList.remove("user-mode");
+        body.classList.add("admin-mode");
 
-    const userMemberId = appState.currentUser.memberId;
-    const now = new Date();
-
-    appState.schedules.forEach((sc) => {
-        if (!sc.data) return;
-        const scheduleDate = new Date(`${sc.data}T${sc.hora || '00:00'}`);
-        const diffInDays = Math.ceil((scheduleDate - now) / (1000 * 60 * 60 * 24));
-
-        // Filtra cultos que ocorrerão entre 13 e 15 dias no futuro (aproximadamente 2 semanas)
-        if (diffInDays >= 13 && diffInDays <= 15) {
-            const positions = ['ministro', 'teclado', 'violao', 'guitarra', 'baixo', 'bateria', 'percussao', 'vocal1', 'vocal2', 'vocal3', 'som', 'midia', 'transmissao'];
-            const isUserScheduled = positions.some(pos => sc[pos] === userMemberId);
-
-            if (isUserScheduled) {
-                const status = (sc.confirmacoes && sc.confirmacoes[userMemberId]) || "pendente";
-                if (status === "pendente") {
-                    const formattedDate = scheduleDate.toLocaleDateString("pt-BR");
-                    showToast(`Aviso: Você está escalado no culto de ${formattedDate}. Por favor, confirme sua presença!`, "warning");
-
-                    if (Notification.permission === "granted") {
-                        new Notification("Lembrete de Escala (2 Semanas)", {
-                            body: `Você possui uma escala no dia ${formattedDate} aguardando sua confirmação.`,
-                            icon: "./icon-192.jpg"
-                        });
-                    }
-                }
-            }
+        if (roleIcon) {
+            roleIcon.style.backgroundColor = "rgba(99, 102, 241, 0.15)";
+            roleIcon.innerHTML = '<i data-lucide="unlock" style="width:16px; height:16px;"></i>';
         }
-    });
+        if (roleName) roleName.textContent = appState.currentUser ? `Olá, ${appState.currentUser.nome.split(" ")[0]}` : "Painel Admin";
+        if (roleBadge) {
+            roleBadge.textContent = "Admin";
+            roleBadge.className = "role-badge";
+        }
+        if (btnText) btnText.textContent = "Sair (Leitor)";
+        if (btnIcon) {
+            btnIcon.className = "";
+            btnIcon.setAttribute("data-lucide", "log-out");
+        }
+    } else {
+        body.classList.remove("admin-mode");
+        body.classList.add("user-mode");
+
+        if (roleIcon) {
+            roleIcon.style.backgroundColor = "var(--secondary)";
+            roleIcon.innerHTML = '<i data-lucide="lock" style="width:16px; height:16px;"></i>';
+        }
+        if (roleName) roleName.textContent = appState.currentUser ? `Olá, ${appState.currentUser.nome.split(" ")[0]}` : "Modo Leitor";
+        if (roleBadge) {
+            roleBadge.textContent = appState.currentUser ? (appState.currentUser.role === "administrador" ? "Admin" : "Usuário") : "Usuário";
+            roleBadge.className = "role-badge";
+        }
+        if (btnText) btnText.textContent = "Área Restrita";
+        if (btnIcon) {
+            btnIcon.className = "";
+            btnIcon.setAttribute("data-lucide", "log-in");
+        }
+
+        // If on admin only configurations tab, return to dashboard
+        const activeNav = document.querySelector(".nav-item.active");
+        if (activeNav && activeNav.getAttribute("data-tab") === "configuracoes") {
+            switchTab("dashboard");
+        }
+    }
+
+    initLucide();
 }
 
-// Confirmar Presença na Escala
-async function confirmAttendance(scheduleId, status) {
-    if (!appState.currentUser || !appState.currentUser.memberId) {
-        showToast("Sua conta de usuário não está vinculada a um perfil de membro.", "danger");
-        return;
+function getCurrentUserMemberId() {
+    return appState.currentUser && appState.currentUser.memberId ? appState.currentUser.memberId : null;
+}
+
+function toggleLoginappState() {
+    if (appState.currentUser) {
+        appState.currentUser = null;
+        appState.currentRole = "usuario";
+        sessionStorage.removeItem("adorascale_currentUser");
+        sessionStorage.removeItem("adorascale_role");
+        updateRoleUI();
+        showToast("Você saiu da sessão atual.", "info");
+    } else {
+        const modal = document.getElementById("modal-login");
+        const passwordInput = document.getElementById("login-senha");
+        const usernameInput = document.getElementById("login-username");
+        if (passwordInput) passwordInput.value = "";
+        if (usernameInput) usernameInput.value = "";
+        if (modal) modal.classList.add("active");
     }
-    const memberId = appState.currentUser.memberId;
+}
+
+function handleLoginSubmit(e) {
+    e.preventDefault();
+    const usernameInput = document.getElementById("login-username");
+    const passwordInput = document.getElementById("login-senha");
+    const username = usernameInput ? usernameInput.value.trim().toLowerCase() : "";
+    const password = passwordInput ? passwordInput.value : "";
+
+    const user = appState.users.find(item => item.username.toLowerCase() === username && item.password === password);
+
+    if (user) {
+        appState.currentUser = user;
+        appState.currentRole = user.role;
+        saveappState();
+        updateRoleUI();
+        showToast(`Bem-vindo(a), ${user.nome}!`, "success");
+        const modal = document.getElementById("modal-login");
+        if (modal) modal.classList.remove("active");
+    } else {
+        showToast("Login ou senha incorretos!", "danger");
+    }
+}
+
+// Salva uma coleção inteira no Firestore
+async function saveCollection(collectionName, dataArray) {
     try {
-        await db.collection("schedules").doc(scheduleId).set({
-            confirmacoes: {
-                [memberId]: status
-            }
-        }, { merge: true });
-        showToast(`Presença atualizada para: ${status.toUpperCase()}`, "success");
+        const batch = db.batch();
+        
+        // Limpa registros anteriores para sincronizar a lista inteira
+        const snapshot = await db.collection(collectionName).get();
+        snapshot.docs.forEach((doc) => {
+            batch.delete(doc.ref);
+        });
+
+        // Grava os novos registros
+        dataArray.forEach((item) => {
+            const docRef = db.collection(collectionName).doc(item.id ? String(item.id) : undefined);
+            batch.set(docRef, item);
+        });
+
+        await batch.commit();
+        console.log(`Coleção ${collectionName} sincronizada com sucesso.`);
     } catch (error) {
-        console.error("Erro ao confirmar presença:", error);
-        showToast("Falha ao salvar confirmação.", "danger");
+        console.error(`Erro ao salvar ${collectionName}:`, error);
     }
 }
 
-// ==================== GERENCIAMENTO DE NAVEGAÇÃO E TABS ====================
-function switchTab(tabName) {
-    const tabs = document.querySelectorAll('.tab-content');
-    const navButtons = document.querySelectorAll('.nav-btn');
+// Salva todo o estado da aplicação no Firebase
+function saveappState() {
+    saveCollection("songs", appState.songs);
+    saveCollection("members", appState.members);
+    saveCollection("schedules", appState.schedules);
+    saveCollection("users", appState.users);
+}
 
-    tabs.forEach(tab => {
-        tab.style.display = tab.id === `tab-${tabName}` ? 'block' : 'none';
-    });
+// Carrega os dados do Firebase Firestore
+async function loadappState() {
+    try {
+        const [songsSnap, membersSnap, schedulesSnap, usersSnap] = await Promise.all([
+            db.collection("songs").get(),
+            db.collection("members").get(),
+            db.collection("schedules").get(),
+            db.collection("users").get()
+        ]);
 
-    navButtons.forEach(btn => {
-        if (btn.dataset.tab === tabName) {
-            btn.classList.add('active');
+        appState.songs = songsSnap.docs.map(doc => doc.data());
+        appState.members = membersSnap.docs.map(doc => doc.data());
+        appState.schedules = schedulesSnap.docs.map(doc => doc.data());
+        appState.users = usersSnap.docs.map(doc => doc.data());
+
+        // Se o banco estiver zerado no primeiro acesso, grava os Mocks iniciais
+        if (appState.songs.length === 0 && appState.members.length === 0) {
+            appState.songs = MOCK_SONGS;
+            appState.members = MOCK_MEMBERS;
+            appState.schedules = MOCK_SCHEDULES;
+            appState.users = MOCK_USERS;
+            await saveappState(); // Garanta que esta função salve os dados no Firestore
         } else {
-            btn.classList.remove('active');
-        }
-    });
+            // FORÇA A ATUALIZAÇÃO DA SENHA DO ADMIN NO FIRESTORE
+            const adminIndex = appState.users.findIndex(u => u.username === "admin");
+            const adminData = {
+                id: "u_admin",
+                username: "admin",
+                password: "adoracao123",
+                nome: "Administrador",
+                role: "administrador",
+                telefone: "11999990000",
+                memberId: ""
+            };
 
-    if (typeof lucide !== "undefined") {
-        lucide.createIcons();
+            if (adminIndex !== -1) {
+                appState.users[adminIndex] = adminData;
+            } else {
+                appState.users.unshift(adminData);
+            }
+            
+            // Atualiza o Firestore com a nova senha corrigida
+            await saveappState();
+        }
+
+        renderApp();
+    } catch (error) {
+        console.error("Erro ao carregando dados do Firebase:", error);
     }
 }
 
-// ==================== MÓDULOS DE RENDERIZAÇÃO (UI) ====================
-function renderDashboard() {
-    const nextScheduleContainer = document.getElementById("next-schedule-card");
-    if (!nextScheduleContainer) return;
+function sortappStateData() {
+    // Sort songs by title
+    appState.songs.sort((a, b) => a.titulo.localeCompare(b.titulo));
+    // Sort members by name
+    appState.members.sort((a, b) => a.nome.localeCompare(b.nome));
+    // Sort schedules by date and time
+    appState.schedules.sort((a, b) => {
+        const dateA = new Date(`${a.data}T${a.hora}`);
+        const dateB = new Date(`${b.data}T${b.hora}`);
+        return dateA - dateB;
+    });
+}
 
-    const now = new Date();
-    const upcoming = appState.schedules.filter(s => new Date(`${s.data}T${s.hora || '00:00'}`) >= now);
+// Update the real date badge in header
+function updateLiveDate() {
+    const liveDateEl = document.getElementById("live-date");
+    if (!liveDateEl) return;
+    
+    const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+    const today = new Date();
+    liveDateEl.textContent = today.toLocaleDateString('pt-BR', options);
+}
 
-    if (upcoming.length === 0) {
-        nextScheduleContainer.innerHTML = `<div class="empty-state">Nenhuma próxima escala agendada.</div>`;
+// ==================== NAVIGATION ====================
+function setupEventListeners() {
+    // Tab switching
+    const navItems = document.querySelectorAll(".nav-item");
+    navItems.forEach(item => {
+        item.addEventListener("click", () => {
+            const tabId = item.getAttribute("data-tab");
+            switchTab(tabId);
+        });
+    });
+
+    // Modal close listeners
+    document.querySelectorAll(".modal-close, .btn-secondary[id$='-cancel']").forEach(btn => {
+        btn.addEventListener("click", (e) => {
+            const modal = e.target.closest(".modal-overlay");
+            if (modal) modal.classList.remove("active");
+        });
+    });
+
+    // Song triggers
+    document.getElementById("btn-nova-musica").addEventListener("click", () => openSongModal());
+    document.getElementById("form-musica").addEventListener("submit", handleSongSubmit);
+    document.getElementById("search-músicas").addEventListener("input", renderSongs);
+    document.getElementById("filter-tom").addEventListener("change", renderSongs);
+
+    // Member triggers
+    document.getElementById("btn-novo-membro").addEventListener("click", () => openMemberModal());
+    document.getElementById("form-membro").addEventListener("submit", handleMemberSubmit);
+    document.getElementById("search-membros").addEventListener("input", renderMembers);
+
+    // Schedule triggers
+    document.getElementById("btn-nova-escala").addEventListener("click", () => openScaleModal());
+    document.getElementById("form-escala").addEventListener("submit", handleScaleSubmit);
+    document.getElementById("search-escalas").addEventListener("input", renderSchedules);
+
+    // Backup actions
+    document.getElementById("btn-exportar-backup").addEventListener("click", exportBackup);
+    document.getElementById("import-file").addEventListener("change", importBackup);
+
+    // Access management
+    const accessForm = document.getElementById("form-acesso");
+    if (accessForm) {
+        accessForm.addEventListener("submit", handleAccessSubmit);
+    }
+    const resetAccessBtn = document.getElementById("btn-limpar-acesso");
+    if (resetAccessBtn) {
+        resetAccessBtn.addEventListener("click", resetAccessForm);
+    }
+    document.getElementById("btn-reset-demo").addEventListener("click", () => {
+        if (confirm("Deseja realmente carregar os dados demonstrativos? Isso substituirá as alterações atuais.")) {
+            localStorage.clear();
+            loadappState();
+            renderAll();
+            showToast("Dados demonstrativos recarregados!", "info");
+        }
+    });
+    document.getElementById("btn-limpar-dados").addEventListener("click", () => {
+        if (confirm("ATENÇÃO: Deseja apagar todos os dados permanentemente? Essa ação não pode ser desfeita.")) {
+            appState = {
+                songs: [],
+                members: [],
+                schedules: [],
+                users: buildDefaultUsers(),
+                currentUser: null,
+                currentRole: "usuario"
+            };
+            saveAppState();
+            renderAll();
+            showToast("Todos os dados foram apagados.", "danger");
+        }
+    });
+
+    // Login triggers
+    document.getElementById("btn-login-modal").addEventListener("click", toggleLoginappState);
+    document.getElementById("form-login").addEventListener("submit", handleLoginSubmit);
+}
+
+function switchTab(tabId) {
+    // Toggle active classes on nav
+    document.querySelectorAll(".nav-item").forEach(item => {
+        if (item.getAttribute("data-tab") === tabId) {
+            item.classList.add("active");
+        } else {
+            item.classList.remove("active");
+        }
+    });
+
+    // Toggle active panes
+    document.querySelectorAll(".tab-pane").forEach(pane => {
+        if (pane.id === `tab-${tabId}`) {
+            pane.classList.add("active");
+        } else {
+            pane.classList.remove("active");
+        }
+    });
+
+    // Update Titles
+    const titleEl = document.getElementById("current-tab-title");
+    const subtitleEl = document.getElementById("current-tab-subtitle");
+    
+    const titles = {
+        dashboard: { title: "Dashboard", subtitle: "Resumo das atividades e próximas escalas" },
+        escalas: { title: "Escalas de Culto", subtitle: "Organize as equipes e setlists por data" },
+        repertorio: { title: "Banco de Músicas", subtitle: "Catálogo de repertório e links rápidos de cifras" },
+        equipe: { title: "Membros da Equipe", subtitle: "Gerencie os instrumentistas e funções dos voluntários" },
+        configuracoes: { title: "Configurações", subtitle: "Ferramentas administrativas e backups" }
+    };
+
+    if (titles[tabId]) {
+        titleEl.textContent = titles[tabId].title;
+        subtitleEl.textContent = titles[tabId].subtitle;
+    }
+
+    // Render corresponding screen
+    renderTab(tabId);
+}
+
+function renderTab(tabId) {
+    if (tabId === "dashboard") renderDashboard();
+    else if (tabId === "escalas") renderSchedules();
+    else if (tabId === "repertorio") renderSongs();
+    else if (tabId === "equipe") renderMembers();
+    else if (tabId === "configuracoes") renderSettings();
+}
+
+function renderAll() {
+    renderDashboard();
+    renderSchedules();
+    renderSongs();
+    renderMembers();
+    renderSettings();
+}
+
+// ==================== SETTINGS / ACCESS MANAGEMENT ====================
+function renderSettings() {
+    populateAccessMemberSelect();
+    renderUserAccesses();
+}
+
+function populateAccessMemberSelect() {
+    const select = document.getElementById("acesso-membro");
+    if (!select) return;
+
+    const currentValue = select.value || "";
+    select.innerHTML = '<option value="">-- Nenhum vínculo --</option>';
+
+    appState.members.forEach(member => {
+        const option = document.createElement("option");
+        option.value = member.id;
+        option.textContent = `${member.nome} (${member.funcoes.join(", ")})`;
+        if (currentValue === member.id) option.selected = true;
+        select.appendChild(option);
+    });
+}
+
+function resetAccessForm() {
+    const form = document.getElementById("form-acesso");
+    if (!form) return;
+    form.reset();
+    document.getElementById("acesso-id").value = "";
+    document.getElementById("acesso-role").value = "usuario";
+    document.getElementById("acesso-membro").value = "";
+}
+
+function renderUserAccesses() {
+    const container = document.getElementById("acessos-list");
+    if (!container) return;
+
+    container.innerHTML = "";
+
+    if (!appState.users || appState.users.length === 0) {
+        container.innerHTML = '<p class="text-secondary">Nenhum acesso cadastrado.</p>';
         return;
     }
 
-    const next = upcoming[0];
-    const formattedDate = new Date(`${next.data}T${next.hora || '00:00'}`).toLocaleDateString('pt-BR', {
-        weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
+    const list = document.createElement("div");
+    list.className = "escalas-container";
+
+    appState.users.forEach(user => {
+        const card = document.createElement("div");
+        card.className = "escala-card";
+        const member = appState.members.find(item => item.id === user.memberId);
+        card.innerHTML = `
+            <div class="escala-header">
+                <div class="escala-title-details">
+                    <h3>${user.nome}</h3>
+                    <div class="escala-meta">
+                        <span><i data-lucide="user"></i> ${user.username}</span>
+                        <span><i data-lucide="shield"></i> ${user.role === "administrador" ? "Administrador" : "Usuário"}</span>
+                        ${member ? `<span><i data-lucide="users"></i> ${member.nome}</span>` : ""}
+                    </div>
+                </div>
+                <div class="escala-card-actions">
+                    <button type="button" class="btn btn-secondary btn-sm" onclick="editAccessUser('${user.id}')">
+                        <i data-lucide="edit-3"></i>
+                        <span>Editar</span>
+                    </button>
+                    <button type="button" class="btn btn-danger btn-sm" onclick="deleteAccessUser('${user.id}')">
+                        <i data-lucide="trash-2"></i>
+                        <span>Excluir</span>
+                    </button>
+                </div>
+            </div>
+        `;
+        list.appendChild(card);
     });
 
-    nextScheduleContainer.innerHTML = `
-        <div class="card-schedule-highlight">
-            <div class="badge-title">Próximo Culto</div>
-            <h3>${next.titulo || 'Culto de Louvor'}</h3>
-            <p class="date-text"><i data-lucide="calendar"></i> ${formattedDate} às ${next.hora || '00:00'}</p>
-            <div class="actions-group">
-                <button onclick="confirmAttendance('${next.id}', 'confirmado')" class="btn-confirm">Confirmar Presença</button>
-                <button onclick="confirmAttendance('${next.id}', 'recusado')" class="btn-decline">Não poderei ir</button>
+    container.appendChild(list);
+    initLucide();
+}
+
+function editAccessUser(userId) {
+    const user = appState.users.find(item => item.id === userId);
+    if (!user) return;
+
+    const form = document.getElementById("form-acesso");
+    if (!form) return;
+
+    document.getElementById("acesso-id").value = user.id;
+    document.getElementById("acesso-nome").value = user.nome;
+    document.getElementById("acesso-usuario").value = user.username;
+    document.getElementById("acesso-senha").value = user.password;
+    document.getElementById("acesso-role").value = user.role;
+    document.getElementById("acesso-telefone").value = user.telefone || "";
+    document.getElementById("acesso-membro").value = user.memberId || "";
+
+    document.getElementById("acesso-nome").focus();
+}
+
+function handleAccessSubmit(e) {
+    e.preventDefault();
+
+    const id = document.getElementById("acesso-id").value;
+    const nome = document.getElementById("acesso-nome").value.trim();
+    const username = document.getElementById("acesso-usuario").value.trim().toLowerCase();
+    const password = document.getElementById("acesso-senha").value;
+    const role = document.getElementById("acesso-role").value;
+    const telefone = document.getElementById("acesso-telefone").value.trim();
+    const memberId = document.getElementById("acesso-membro").value;
+
+    if (!nome || !username || !password) {
+        showToast("Preencha nome, usuário e senha para salvar o acesso.", "danger");
+        return;
+    }
+
+    const duplicateUser = appState.users.find(item => item.username.toLowerCase() === username && item.id !== id);
+    if (duplicateUser) {
+        showToast("Esse nome de usuário já existe.", "danger");
+        return;
+    }
+
+    if (id) {
+        const index = appState.users.findIndex(item => item.id === id);
+        if (index !== -1) {
+            appState.users[index] = { ...appState.users[index], nome, username, password, role, telefone, memberId };
+            showToast("Acesso atualizado com sucesso.", "success");
+        }
+    } else {
+        appState.users.push({
+            id: `u_${Date.now()}`,
+            nome,
+            username,
+            password,
+            role,
+            telefone,
+            memberId
+        });
+        showToast("Novo acesso cadastrado com sucesso.", "success");
+    }
+
+    saveAppState();
+    renderSettings();
+    resetAccessForm();
+
+    if (appState.currentUser && appState.currentUser.id === id) {
+        appState.currentUser = appState.users.find(item => item.id === id) || null;
+        appState.currentRole = appState.currentUser ? appState.currentUser.role : "usuario";
+        updateRoleUI();
+    }
+}
+
+function deleteAccessUser(userId) {
+    if (!confirm("Deseja realmente remover este acesso?")) return;
+
+    const targetUser = appState.users.find(item => item.id === userId);
+    if (!targetUser) return;
+
+    appState.users = appState.users.filter(item => item.id !== userId);
+    saveState();
+
+    if (appState.currentUser && appState.currentUser.id === userId) {
+        appState.currentUser = null;
+        appState.currentRole = "usuario";
+        sessionStorage.removeItem("adorascale_currentUser");
+        sessionStorage.removeItem("adorascale_role");
+        updateRoleUI();
+    }
+
+    renderSettings();
+    showToast("Acesso removido.", "info");
+}
+
+// ==================== TOAST SYSTEM ====================
+function showToast(message, type = "success") {
+    const container = document.getElementById("toast-container");
+    if (!container) return;
+
+    const toast = document.createElement("div");
+    toast.className = `toast toast-${type}`;
+    
+    let iconName = "check-circle";
+    if (type === "danger") iconName = "alert-circle";
+    else if (type === "info") iconName = "info";
+    else if (type === "warning") iconName = "alert-triangle";
+
+    toast.innerHTML = `
+        <i data-lucide="${iconName}"></i>
+        <span>${message}</span>
+    `;
+
+    container.appendChild(toast);
+    initLucide();
+
+    // Auto fade out
+    setTimeout(() => {
+        toast.classList.add("toast-fade-out");
+        toast.addEventListener("animationend", () => toast.remove());
+    }, 3500);
+}
+
+// ==================== DASHBOARD SECTION ====================
+function renderDashboard() {
+    // 1. Render Stats
+    document.getElementById("stat-total-songs").textContent = appState.songs.length;
+    document.getElementById("stat-total-members").textContent = appState.members.length;
+    document.getElementById("stat-total-schedules").textContent = appState.schedules.length;
+
+    // Calculate most sung songs and top song
+    const songCount = {};
+    appState.schedules.forEach(sc => {
+        if (sc.setlist && Array.isArray(sc.setlist)) {
+            sc.setlist.forEach(songId => {
+                songCount[songId] = (songCount[songId] || 0) + 1;
+            });
+        }
+    });
+
+    const sortedSongsByUsage = Object.keys(songCount).map(id => {
+        const song = appState.songs.find(s => s.id === id);
+        return {
+            id,
+            count: songCount[id],
+            titulo: song ? song.titulo : "Música Removida",
+            artista: song ? song.artista : "Desconhecido"
+        };
+    }).sort((a, b) => b.count - a.count);
+
+    const topSong = sortedSongsByUsage[0];
+    if (topSong) {
+        document.getElementById("stat-top-song").textContent = topSong.titulo;
+        document.getElementById("stat-top-song-count").textContent = `${topSong.count} ${topSong.count === 1 ? 'execução' : 'execuções'}`;
+    } else {
+        document.getElementById("stat-top-song").textContent = "Nenhuma";
+        document.getElementById("stat-top-song-count").textContent = "0 execuções";
+    }
+
+    // 2. Render Most Sung List on Dashboard
+    const mostSungContainer = document.getElementById("dashboard-most-sung-songs");
+    mostSungContainer.innerHTML = "";
+    
+    if (sortedSongsByUsage.length === 0) {
+        mostSungContainer.innerHTML = `<p class="text-secondary text-center">Nenhuma estatística disponível.</p>`;
+    } else {
+        const maxCount = sortedSongsByUsage[0].count;
+        sortedSongsByUsage.slice(0, 4).forEach(item => {
+            const pct = maxCount > 0 ? (item.count / maxCount) * 100 : 0;
+            const itemEl = document.createElement("div");
+            itemEl.className = "most-sung-item";
+            itemEl.innerHTML = `
+                <div class="most-sung-meta">
+                    <span class="most-sung-title">${item.titulo} <small class="text-muted">(${item.artista})</small></span>
+                    <span class="most-sung-count">${item.count}x</span>
+                </div>
+                <div class="progress-bar-bg">
+                    <div class="progress-bar-fill" style="width: ${pct}%"></div>
+                </div>
+            `;
+            mostSungContainer.appendChild(itemEl);
+        });
+    }
+
+    // 3. Render Upcoming Schedules (Today or Future) - Grouped by Month
+    const timelineContainer = document.getElementById("dashboard-next-schedules");
+    timelineContainer.innerHTML = "";
+
+    const todayStr = new Date().toISOString().split('T')[0];
+    let upcomingSchedules = appState.schedules.filter(sc => sc.data >= todayStr);
+    
+    if (upcomingSchedules.length === 0) {
+        const latestSchedules = appState.schedules.slice(-3);
+        if (latestSchedules.length === 0) {
+            timelineContainer.innerHTML = `<p class="text-secondary text-center py-4">Nenhuma escala programada.</p>`;
+        } else {
+            upcomingSchedules = latestSchedules;
+        }
+    }
+
+    const groupedByMonth = groupSchedulesByMonth(upcomingSchedules);
+    Object.keys(groupedByMonth).sort().slice(0, 3).forEach(monthKey => {
+        const monthHeader = document.createElement("div");
+        monthHeader.className = "month-header";
+        monthHeader.innerHTML = `<h4 style="color: var(--text-primary); font-size: 1rem; margin: 16px 0 12px 0; border-bottom: 1px solid var(--border-color); padding-bottom: 8px;">${monthKey}</h4>`;
+        timelineContainer.appendChild(monthHeader);
+        
+        groupedByMonth[monthKey].forEach(sc => timelineContainer.appendChild(createTimelineItem(sc)));
+    });
+    
+    initLucide();
+}
+
+function groupSchedulesByMonth(schedules) {
+    const grouped = {};
+    schedules.forEach(sc => {
+        const dateObj = new Date(`${sc.data}T${sc.hora}`);
+        const monthKey = dateObj.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' }).replace(/\b\w/g, l => l.toUpperCase());
+        if (!grouped[monthKey]) grouped[monthKey] = [];
+        grouped[monthKey].push(sc);
+    });
+    return grouped;
+}
+
+function createTimelineItem(sc) {
+    const dateObj = new Date(`${sc.data}T${sc.hora}`);
+    const day = dateObj.getDate().toString().padStart(2, '0');
+    const month = dateObj.toLocaleDateString('pt-BR', { month: 'short' }).replace('.', '');
+    
+    const div = document.createElement("div");
+    div.className = "timeline-item";
+    
+    // Get lead initials or name
+    const ministroObj = appState.members.find(m => m.id === sc.ministro);
+    const ministroName = ministroObj ? ministroObj.nome : "Sem Ministro";
+
+    // Gather participants count
+    const positions = ['ministro', 'teclado', 'violao', 'guitarra', 'baixo', 'bateria', 'vocal1', 'vocal2', 'vocal3', 'som', 'midia'];
+    const activeParticipants = positions.map(pos => sc[pos]).filter(id => id);
+
+    let avatarsHtml = "";
+    activeParticipants.slice(0, 4).forEach(id => {
+        const m = appState.members.find(memb => memb.id === id);
+        if (m) {
+            const initials = m.nome.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
+            avatarsHtml += `<div class="member-dot-avatar" title="${m.nome}">${initials}</div>`;
+        }
+    });
+
+    if (activeParticipants.length > 4) {
+        avatarsHtml += `<div class="member-dot-avatar" title="Mais ${activeParticipants.length - 4} participantes">+${activeParticipants.length - 4}</div>`;
+    }
+
+    div.innerHTML = `
+        <div class="timeline-info">
+            <div class="timeline-date-box">
+                <span class="timeline-date-day">${day}</span>
+                <span class="timeline-date-month">${month}</span>
             </div>
+            <div class="timeline-details">
+                <h4>${sc.tipo}</h4>
+                <p><i data-lucide="clock"></i> ${sc.hora}h ${sc.obs ? `• ${sc.obs}` : ''}</p>
+                <p style="margin-top: 4px; font-size: 0.8rem; color: var(--text-secondary)">
+                    <strong>Ministro:</strong> ${ministroName} • <strong>Setlist:</strong> ${sc.setlist ? sc.setlist.length : 0} músicas
+                </p>
+            </div>
+        </div>
+        <div class="timeline-members-summary">
+            ${avatarsHtml}
         </div>
     `;
 
-    if (typeof lucide !== "undefined") {
-        lucide.createIcons();
-    }
+    return div;
 }
 
-function renderSchedules() {
-    const container = document.getElementById("schedules-list");
-    if (!container) return;
-
-    if (appState.schedules.length === 0) {
-        container.innerHTML = `<p class="empty-text">Nenhuma escala cadastrada.</p>`;
-        return;
-    }
-
-    container.innerHTML = appState.schedules.map(sc => `
-        <div class="schedule-card">
-            <div class="schedule-header">
-                <h4>${sc.titulo || 'Culto'}</h4>
-                <span>${sc.data} às ${sc.hora || '00:00'}</span>
-            </div>
-            <p><strong>Ministro:</strong> ${getMemberName(sc.ministro)}</p>
-            <p><strong>Músicos:</strong> ${getMemberName(sc.teclado)}, ${getMemberName(sc.violao)}, ${getMemberName(sc.bateria)}</p>
-            ${appState.currentRole === 'admin' ? `<button onclick="deleteDocument('schedules', '${sc.id}')" class="btn-delete">Excluir Escala</button>` : ''}
-        </div>
-    `).join('');
-}
-
+// ==================== SONG DIRECTORY (REPERTORIO) ====================
 function renderSongs() {
-    const container = document.getElementById("songs-list");
-    if (!container) return;
+    const tableBody = document.getElementById("músicas-list-table");
+    const emptyappState = document.getElementById("repertorio-empty");
+    const searchQuery = document.getElementById("search-músicas").value.toLowerCase();
+    const filterTom = document.getElementById("filter-tom").value;
 
-    if (appState.songs.length === 0) {
-        container.innerHTML = `<p class="empty-text">Nenhuma música cadastrada no repertório.</p>`;
-        return;
+    tableBody.innerHTML = "";
+
+    // Count how many times each song has been sung
+    const songUsage = {};
+    appState.schedules.forEach(sc => {
+        if (sc.setlist) {
+            sc.setlist.forEach(sid => {
+                songUsage[sid] = (songUsage[sid] || 0) + 1;
+            });
+        }
+    });
+
+    const filteredSongs = appState.songs.filter(song => {
+        const matchesSearch = song.titulo.toLowerCase().includes(searchQuery) ||
+                             song.artista.toLowerCase().includes(searchQuery) ||
+                             song.tom.toLowerCase().includes(searchQuery);
+        
+        const matchesTom = !filterTom || song.tom === filterTom || song.tom.startsWith(filterTom);
+
+        return matchesSearch && matchesTom;
+    });
+
+    if (filteredSongs.length === 0) {
+        emptyappState.classList.remove("hidden");
+    } else {
+        emptyappState.classList.add("hidden");
+        filteredSongs.forEach(song => {
+            const tr = document.createElement("tr");
+            const usageCount = songUsage[song.id] || 0;
+
+            tr.innerHTML = `
+                <td>
+                    <div class="song-title-cell">
+                        <span>${song.titulo}</span>
+                        ${song.observacoes ? `<small title="${song.observacoes}">${song.observacoes.substring(0, 45)}${song.observacoes.length > 45 ? '...' : ''}</small>` : ''}
+                    </div>
+                </td>
+                <td>${song.artista}</td>
+                <td><span class="tag-tom">${song.tom || 'N/A'}</span></td>
+                <td>
+                    <div class="link-group">
+                        <a href="${song.linkDrive}" target="_blank" class="btn-link-action drive-link" title="Abrir Cifra no Drive">
+                            <i data-lucide="file-text"></i>
+                        </a>
+                        <a href="${song.linkVideo}" target="_blank" class="btn-link-action video-link" title="Ouvir Música">
+                            <i data-lucide="youtube"></i>
+                        </a>
+                    </div>
+                </td>
+                <td>
+                    <span class="badge-round ${usageCount > 0 ? 'active' : ''}" title="Tocada ${usageCount} vezes">
+                        ${usageCount}
+                    </span>
+                </td>
+                <td class="admin-only">
+                    <div class="escala-card-actions">
+                        <button class="btn-link-action" onclick="openSongModal('${song.id}')" title="Editar">
+                            <i data-lucide="edit-3"></i>
+                        </button>
+                        <button class="btn-link-action" onclick="deleteSong('${song.id}')" title="Excluir" style="color: var(--danger)">
+                            <i data-lucide="trash-2"></i>
+                        </button>
+                    </div>
+                </td>
+            `;
+            tableBody.appendChild(tr);
+        });
     }
 
-    container.innerHTML = appState.songs.map(song => `
-        <div class="song-card">
-            <h4>${song.titulo}</h4>
-            <p><strong>Artista:</strong> ${song.artista || 'N/A'} | <strong>Tom:</strong> ${song.tom || 'N/A'}</p>
-            ${song.link ? `<a href="${song.link}" target="_blank" class="song-link">Ver Cifra / Link</a>` : ''}
-            ${appState.currentRole === 'admin' ? `<button onclick="deleteDocument('songs', '${song.id}')" class="btn-delete-sm">Excluir</button>` : ''}
-        </div>
-    `).join('');
+    initLucide();
 }
 
-function renderMembers() {
-    const container = document.getElementById("members-list");
-    if (!container) return;
+function openSongModal(songId = "") {
+    const modal = document.getElementById("modal-musica");
+    const form = document.getElementById("form-musica");
+    form.reset();
 
-    if (appState.members.length === 0) {
-        container.innerHTML = `<p class="empty-text">Nenhum membro cadastrado.</p>`;
-        return;
+    if (songId) {
+        document.getElementById("modal-musica-title").textContent = "Editar Música";
+        const song = appState.songs.find(s => s.id === songId);
+        if (song) {
+            document.getElementById("musica-id").value = song.id;
+            document.getElementById("musica-titulo").value = song.titulo;
+            document.getElementById("musica-artista").value = song.artista;
+            document.getElementById("musica-tom").value = song.tom;
+            document.getElementById("musica-bpm").value = song.bpm || "";
+            document.getElementById("musica-link-drive").value = song.linkDrive;
+            document.getElementById("musica-link-video").value = song.linkVideo;
+            document.getElementById("musica-observacoes").value = song.observacoes || "";
+        }
+    } else {
+        document.getElementById("modal-musica-title").textContent = "Nova Música";
+        document.getElementById("musica-id").value = "";
     }
 
-    container.innerHTML = appState.members.map(m => `
-        <div class="member-card">
-            <h4>${m.nome}</h4>
-            <p><strong>Função:</strong> ${m.instrumento || 'Integrante'}</p>
-            <p><strong>Telefone:</strong> ${m.telefone || 'Não informado'}</p>
-            ${appState.currentRole === 'admin' ? `<button onclick="deleteDocument('members', '${m.id}')" class="btn-delete-sm">Remover</button>` : ''}
-        </div>
-    `).join('');
+    modal.classList.add("active");
 }
 
-function renderSettings() {
-    const container = document.getElementById("users-list");
-    if (!container) return;
+function handleSongSubmit(e) {
+    e.preventDefault();
 
-    container.innerHTML = appState.users.map(u => `
-        <div class="user-row">
-            <span>${u.nome || u.email} (${u.role || 'usuario'})</span>
-        </div>
-    `).join('');
-}
+    const id = document.getElementById("musica-id").value;
+    const songData = {
+        titulo: document.getElementById("musica-titulo").value.trim(),
+        artista: document.getElementById("musica-artista").value.trim(),
+        tom: document.getElementById("musica-tom").value.trim(),
+        bpm: document.getElementById("musica-bpm").value ? parseInt(document.getElementById("musica-bpm").value) : null,
+        linkDrive: document.getElementById("musica-link-drive").value.trim(),
+        linkVideo: document.getElementById("musica-link-video").value.trim(),
+        observacoes: document.getElementById("musica-observacoes").value.trim()
+    };
 
-// Auxiliares de Interface
-function getMemberName(id) {
-    if (!id) return 'Não escalado';
-    const member = appState.members.find(m => m.id === id);
-    return member ? member.nome : 'Desconhecido';
-}
-
-function updateLiveDate() {
-    const el = document.getElementById("live-date");
-    if (el) {
-        const now = new Date();
-        el.textContent = now.toLocaleDateString("pt-BR", { weekday: 'long', day: 'numeric', month: 'long' });
+    if (id) {
+        // Edit mode
+        const index = appState.songs.findIndex(s => s.id === id);
+        if (index !== -1) {
+            appState.songs[index] = { id, ...songData };
+            showToast("Música atualizada com sucesso!");
+        }
+    } else {
+        // Create mode
+        const newSong = {
+            id: 's_' + Date.now(),
+            ...songData
+        };
+        appState.songs.push(newSong);
+        showToast("Música adicionada ao repertório!");
     }
+
+    saveAppState();
+    sortappStateData();
+    document.getElementById("modal-musica").classList.remove("active");
+    renderSongs();
+    renderDashboard();
 }
 
-function initRole() {
-    const savedRole = localStorage.getItem("adora_role") || "usuario";
-    appState.currentRole = savedRole;
-    document.body.setAttribute("data-role", savedRole);
-}
+function deleteSong(songId) {
+    const song = appState.songs.find(s => s.id === songId);
+    if (!song) return;
 
-function setupEventListeners() {
-    // Escuta cliques em todos os botões de navegação
-    document.querySelectorAll(".nav-btn, [data-tab]").forEach(btn => {
-        btn.addEventListener("click", (e) => {
-            // Busca o data-tab no próprio elemento ou no mestre mais próximo
-            const targetBtn = e.currentTarget.closest("[data-tab]");
-            if (targetBtn) {
-                const tab = targetBtn.dataset.tab;
-                switchTab(tab);
+    // Check if the song is currently used in any schedule
+    const isUsed = appState.schedules.some(sc => sc.setlist && sc.setlist.includes(songId));
+    const confirmMsg = isUsed 
+        ? `A música "${song.titulo}" está escalada em alguns cultos. Se você excluí-la, ela será removida dessas escalas também. Deseja continuar?`
+        : `Deseja realmente excluir a música "${song.titulo}"?`;
+
+    if (confirm(confirmMsg)) {
+        // Remove from schedules setlists
+        appState.schedules.forEach(sc => {
+            if (sc.setlist) {
+                sc.setlist = sc.setlist.filter(id => id !== songId);
             }
         });
+
+        // Remove from appState songs
+        appState.songs = appState.songs.filter(s => s.id !== songId);
+        
+        saveAppState();
+        showToast("Música excluída com sucesso.", "info");
+        renderSongs();
+        renderDashboard();
+    }
+}
+
+// ==================== MEMBERS MANAGEMENT (EQUIPE) ====================
+function renderMembers() {
+    const grid = document.getElementById("membros-list-grid");
+    const emptyappState = document.getElementById("equipe-empty");
+    const searchQuery = document.getElementById("search-membros").value.toLowerCase();
+
+    grid.innerHTML = "";
+
+    const filteredMembers = appState.members.filter(m => {
+        return m.nome.toLowerCase().includes(searchQuery) ||
+               m.funcoes.some(f => f.toLowerCase().includes(searchQuery));
+    });
+
+    if (filteredMembers.length === 0) {
+        emptyappState.classList.remove("hidden");
+    } else {
+        emptyappState.classList.add("hidden");
+        filteredMembers.forEach(m => {
+            const card = document.createElement("div");
+            card.className = "member-card";
+
+            const initials = m.nome.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
+            const badgesHtml = m.funcoes.map(f => `<span class="member-badge">${f}</span>`).join('');
+            
+            // Format phone for visual and wa.me link
+            const rawPhone = m.telefone.replace(/\D/g, ''); // Numbers only
+            const formattedPhone = formatPhoneNumber(m.telefone);
+            const waLink = `https://wa.me/55${rawPhone}`;
+
+            card.innerHTML = `
+                <div class="member-card-header">
+                    <div class="member-card-info">
+                        <div class="member-avatar">${initials}</div>
+                        <div class="member-card-details">
+                            <h4>${m.nome}</h4>
+                            <p><i data-lucide="phone"></i> ${formattedPhone}</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="member-badges">
+                    ${badgesHtml}
+                </div>
+                <div class="member-card-footer">
+                    <a href="${waLink}" target="_blank" class="btn btn-secondary btn-sm btn-whatsapp" title="Enviar Mensagem">
+                        <i data-lucide="message-square"></i>
+                        <span>WhatsApp</span>
+                    </a>
+                    <div class="escala-card-actions admin-only">
+                        <button class="btn-link-action" onclick="openMemberModal('${m.id}')" title="Editar">
+                            <i data-lucide="edit-3"></i>
+                        </button>
+                        <button class="btn-link-action" onclick="deleteMember('${m.id}')" title="Excluir" style="color: var(--danger)">
+                            <i data-lucide="trash-2"></i>
+                        </button>
+                    </div>
+                </div>
+            `;
+            grid.appendChild(card);
+        });
+    }
+
+    initLucide();
+}
+
+function formatPhoneNumber(phone) {
+    const raw = phone.replace(/\D/g, '');
+    if (raw.length === 11) {
+        return `(${raw.substring(0, 2)}) ${raw.substring(2, 7)}-${raw.substring(7)}`;
+    } else if (raw.length === 10) {
+        return `(${raw.substring(0, 2)}) ${raw.substring(2, 6)}-${raw.substring(6)}`;
+    }
+    return phone;
+}
+
+function openMemberModal(memberId = "") {
+    const modal = document.getElementById("modal-membro");
+    const form = document.getElementById("form-membro");
+    form.reset();
+
+    if (memberId) {
+        document.getElementById("modal-membro-title").textContent = "Editar Integrante";
+        const member = appState.members.find(m => m.id === memberId);
+        if (member) {
+            document.getElementById("membro-id").value = member.id;
+            document.getElementById("membro-nome").value = member.nome;
+            document.getElementById("membro-telefone").value = member.telefone;
+            
+            // Check correct checkboxes
+            form.querySelectorAll("input[name='funcoes']").forEach(chk => {
+                chk.checked = member.funcoes.includes(chk.value);
+            });
+        }
+    } else {
+        document.getElementById("modal-membro-title").textContent = "Novo Membro";
+        document.getElementById("membro-id").value = "";
+    }
+
+    modal.classList.add("active");
+}
+
+function handleMemberSubmit(e) {
+    e.preventDefault();
+
+    const id = document.getElementById("membro-id").value;
+    const nome = document.getElementById("membro-nome").value.trim();
+    const telefone = document.getElementById("membro-telefone").value.trim();
+    
+    // Gather checked functions
+    const funcoes = [];
+    document.querySelectorAll("input[name='funcoes']:checked").forEach(chk => {
+        funcoes.push(chk.value);
+    });
+
+    if (funcoes.length === 0) {
+        alert("Selecione pelo menos uma função/instrumento para o membro.");
+        return;
+    }
+
+    const memberData = { nome, telefone, funcoes };
+
+    if (id) {
+        const index = appState.members.findIndex(m => m.id === id);
+        if (index !== -1) {
+            appState.members[index] = { id, ...memberData };
+            showToast("Integrante atualizado com sucesso!");
+        }
+    } else {
+        const newMember = {
+            id: 'm_' + Date.now(),
+            ...memberData
+        };
+        appState.members.push(newMember);
+        showToast("Novo integrante cadastrado!");
+    }
+
+    saveappState();
+    sortappStateData();
+    document.getElementById("modal-membro").classList.remove("active");
+    renderMembers();
+    renderDashboard();
+}
+
+function deleteMember(memberId) {
+    const member = appState.members.find(m => m.id === memberId);
+    if (!member) return;
+
+    // Check if member is scheduled in any cult
+    const scheduledCuts = appState.schedules.filter(sc => {
+        const positions = ['ministro', 'teclado', 'violao', 'guitarra', 'baixo', 'bateria', 'vocal1', 'vocal2', 'vocal3', 'som', 'midia'];
+        return positions.some(pos => sc[pos] === memberId);
+    });
+
+    const isScheduled = scheduledCuts.length > 0;
+    const confirmMsg = isScheduled
+        ? `"${member.nome}" está escalado(a) em ${scheduledCuts.length} culto(s). Se você excluí-lo, ele será removido dessas escalas. Continuar?`
+        : `Deseja realmente excluir "${member.nome}" da equipe?`;
+
+    if (confirm(confirmMsg)) {
+        // Remove from schedules roles
+        appState.schedules.forEach(sc => {
+            const positions = ['ministro', 'teclado', 'violao', 'guitarra', 'baixo', 'bateria', 'vocal1', 'vocal2', 'vocal3', 'som', 'midia'];
+            positions.forEach(pos => {
+                if (sc[pos] === memberId) {
+                    sc[pos] = "";
+                }
+            });
+        });
+
+        // Remove member
+        appState.members = appState.members.filter(m => m.id !== memberId);
+        
+        saveappState();
+        showToast("Integrante removido.", "info");
+        renderMembers();
+        renderDashboard();
+    }
+}
+
+// ==================== SCHEDULES CONTROL (ESCALAS) ====================
+function renderSchedules() {
+    const container = document.getElementById("escalas-list");
+    const searchQuery = document.getElementById("search-escalas").value.toLowerCase();
+
+    container.innerHTML = "";
+
+    const filteredSchedules = appState.schedules.filter(sc => {
+        return sc.tipo.toLowerCase().includes(searchQuery) ||
+               sc.data.toLowerCase().includes(searchQuery) ||
+               (sc.obs && sc.obs.toLowerCase().includes(searchQuery));
+    });
+
+    if (filteredSchedules.length === 0) {
+        container.innerHTML = `
+            <div class="empty-appState">
+                <i data-lucide="calendar"></i>
+                <h4>Nenhuma escala encontrada</h4>
+                <p>Crie uma nova escala de culto para organizar a equipe e a setlist.</p>
+            </div>
+        `;
+        initLucide();
+        return;
+    }
+
+    // Group schedules by month
+    const groupedByMonth = groupSchedulesByMonth(filteredSchedules);
+    
+    // Render each month
+    Object.keys(groupedByMonth).sort().forEach(monthKey => {
+        const monthHeader = document.createElement("div");
+        monthHeader.className = "month-header";
+        monthHeader.innerHTML = `<h3 style="color: var(--primary); font-size: 1.2rem; margin: 24px 0 16px 0; border-left: 4px solid var(--primary); padding-left: 12px;">${monthKey}</h3>`;
+        container.appendChild(monthHeader);
+
+        groupedByMonth[monthKey].forEach(sc => renderScheduleCard(container, sc));
+    });
+
+    initLucide();
+}
+
+function renderScheduleCard(container, sc) {
+        const card = document.createElement("div");
+        card.className = "escala-card";
+
+        const dateObj = new Date(`${sc.data}T${sc.hora}`);
+        const day = dateObj.getDate().toString().padStart(2, '0');
+        const month = dateObj.toLocaleDateString('pt-BR', { month: 'short' }).replace('.', '');
+        const weekday = dateObj.toLocaleDateString('pt-BR', { weekday: 'long' });
+
+        // Map roles
+        const getMemberName = (id) => {
+            const m = appState.members.find(memb => memb.id === id);
+            return m ? m.nome : '<span class="text-muted" style="font-weight: normal; font-style: italic;">Não escalado</span>';
+        };
+
+        // Render team members
+        const roles = [
+            { label: "Ministro(a)", id: sc.ministro },
+            { label: "Teclado", id: sc.teclado },
+            { label: "Violão", id: sc.violao },
+            { label: "Guitarra", id: sc.guitarra },
+            { label: "Contra-baixo", id: sc.baixo },
+            { label: "Bateria", id: sc.bateria },
+            { label: "Percussão", id: sc.percussao },
+            { label: "Vocal 1", id: sc.vocal1 },
+            { label: "Vocal 2", id: sc.vocal2 },
+            { label: "Vocal 3", id: sc.vocal3 },
+            { label: "Som", id: sc.som },
+            { label: "Mídia/Projeção", id: sc.midia },
+            { label: "Transmissão", id: sc.transmissao },
+        ];
+
+        let teamGridHtml = "";
+        // Ensure confirmacoes exists
+        if (!sc.confirmacoes) sc.confirmacoes = {};
+
+        roles.forEach(role => {
+            const member = role.id ? appState.members.find(m => m.id === role.id) : null;
+            let nameHtml = "";
+            let waBtnHtml = "";
+            let confirmBadgeHtml = "";
+            
+            if (member) {
+                nameHtml = member.nome;
+
+                // Confirmation status
+                const status = sc.confirmacoes[member.id] || "pendente";
+                const statusConfig = {
+                    pendente:     { icon: "clock",        label: "Pendente",     cssClass: "confirm-pendente" },
+                    confirmado:   { icon: "check-circle", label: "Confirmado",   cssClass: "confirm-confirmado" },
+                    indisponivel: { icon: "x-circle",     label: "Indisponível", cssClass: "confirm-indisponivel" }
+                };
+                const cfg = statusConfig[status];
+                const currentMemberId = getCurrentUserMemberId();
+                const isAdmin = appState.currentRole === "administrador";
+                const isOwnMember = !!(currentMemberId && currentMemberId === member.id);
+                const canManageThis = isOwnMember || isAdmin;
+                const clickHandler = canManageThis
+                    ? `onclick="toggleConfirmation('${sc.id}', '${member.id}'); event.stopPropagation();"`
+                    : "";
+                const titleText = canManageThis 
+                    ? (isAdmin ? `${cfg.label} — Clique para alterar (Adm)` : `${cfg.label} — Clique para alterar`)
+                    : `${cfg.label} — Você só pode confirmar a própria presença`;
+                confirmBadgeHtml = `
+                    <button class="confirm-badge ${cfg.cssClass}" ${canManageThis ? clickHandler : ""} ${canManageThis ? "" : "disabled style=\"cursor:not-allowed; opacity:0.7;\""}
+                            title="${titleText}">
+                        <i data-lucide="${cfg.icon}" style="width:12px; height:12px;"></i>
+                        <span>${cfg.label}</span>
+                    </button>
+                `;
+                
+                // Construct the customized WhatsApp message text
+                const formattedDate = new Date(`${sc.data}T${sc.hora}`).toLocaleDateString('pt-BR');
+                const setlistSongs = [];
+                if (sc.setlist && sc.setlist.length > 0) {
+                    sc.setlist.forEach((songId, idx) => {
+                        const song = appState.songs.find(s => s.id === songId);
+                        if (song) {
+                            setlistSongs.push(`${idx + 1}. ${song.titulo} (${song.tom})`);
+                        }
+                    });
+                }
+                const setlistStr = setlistSongs.length > 0 ? setlistSongs.join('\n') : 'A definir';
+                
+                const messageText = `Olá *${member.nome}*, você foi escalado(a) no ministério de louvor!\n\n` +
+                    `📅 *Culto:* ${sc.tipo}${sc.obs ? ` (${sc.obs})` : ''}\n` +
+                    `📆 *Data:* ${formattedDate} às ${sc.hora}h\n` +
+                    `🎸 *Sua Função:* ${role.label}\n\n` +
+                    `🎵 *Setlist:* \n${setlistStr}\n\n` +
+                    `Confirme sua presença respondendo a esta mensagem. Deus abençoe! 🙌`;
+                
+                const rawPhone = member.telefone.replace(/\D/g, '');
+                const waLink = `https://wa.me/55${rawPhone}?text=${encodeURIComponent(messageText)}`;
+                
+                waBtnHtml = `
+                    <a href="${waLink}" target="_blank" class="escala-member-wa-btn admin-only" title="Enviar aviso individual por WhatsApp">
+                        <i data-lucide="message-square" style="width: 12px; height: 12px;"></i>
+                    </a>
+                `;
+            } else {
+                nameHtml = '<span class="text-muted" style="font-weight: normal; font-style: italic;">Não escalado</span>';
+            }
+
+            teamGridHtml += `
+                <div class="escala-member-item">
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start; width: 100%;">
+                        <span class="member-role">${role.label}</span>
+                        ${waBtnHtml}
+                    </div>
+                    <span class="member-name">${nameHtml}</span>
+                    ${confirmBadgeHtml}
+                </div>
+            `;
+        });
+
+        // Render Setlist
+        let setlistHtml = "";
+        if (!sc.setlist || sc.setlist.length === 0) {
+            setlistHtml = `<p class="text-secondary" style="font-style: italic; font-size: 0.85rem;">Nenhuma música na setlist.</p>`;
+        } else {
+            sc.setlist.forEach((songId, index) => {
+                const song = appState.songs.find(s => s.id === songId);
+                if (song) {
+                    setlistHtml += `
+                        <div class="escala-song-item">
+                            <div class="escala-song-info">
+                                <span class="escala-song-title">
+                                    ${index + 1}. ${song.titulo}
+                                    <span class="escala-song-tom">${song.tom}</span>
+                                </span>
+                                <span class="escala-song-artist">${song.artista}</span>
+                            </div>
+                            <div class="link-group">
+                                <a href="${song.linkDrive}" target="_blank" class="btn-link-action drive-link" title="Abrir Cifra">
+                                    <i data-lucide="file-text"></i>
+                                </a>
+                                <a href="${song.linkVideo}" target="_blank" class="btn-link-action video-link" title="Ouvir">
+                                    <i data-lucide="youtube"></i>
+                                </a>
+                            </div>
+                        </div>
+                    `;
+                }
+            });
+        }
+
+        card.innerHTML = `
+            <div class="escala-header">
+                <div class="escala-date-info">
+                    <div class="escala-day-badge">
+                        ${day}
+                        <span>${month}</span>
+                    </div>
+                    <div class="escala-title-details">
+                        <h3>${sc.tipo}</h3>
+                        <div class="escala-meta">
+                            <span><i data-lucide="calendar"></i> ${capitalizeFirstLetter(weekday)}</span>
+                            <span><i data-lucide="clock"></i> ${sc.hora}h</span>
+                            ${sc.obs ? `<span><i data-lucide="info"></i> ${sc.obs}</span>` : ''}
+                        </div>
+                    </div>
+                </div>
+                <div class="escala-card-actions admin-only">
+                    <button class="btn btn-secondary btn-sm btn-whatsapp-share" onclick="shareFullScale('${sc.id}')" title="Enviar escala completa para o grupo">
+                        <i data-lucide="share-2"></i>
+                        <span>Enviar Grupo</span>
+                    </button>
+                    <button class="btn btn-secondary btn-sm" onclick="openScaleModal('${sc.id}')">
+                        <i data-lucide="edit-3"></i>
+                        <span>Editar</span>
+                    </button>
+                    <button class="btn btn-danger btn-sm" onclick="deleteScale('${sc.id}')">
+                        <i data-lucide="trash-2"></i>
+                        <span>Excluir</span>
+                    </button>
+                </div>
+            </div>
+            ${sc.tema || sc.versiculos ? `
+            <div class="escala-pregacao-section" style="background-color: rgba(99, 102, 241, 0.05); border-left: 4px solid var(--primary); padding: 12px; margin: 12px 0; border-radius: 4px;">
+                ${sc.tema ? `<div style="margin-bottom: 8px;"><strong>📖 Tema:</strong> ${sc.tema}</div>` : ''}
+                ${sc.versiculos ? `<div style="font-size: 0.9rem; color: var(--text-secondary);"><strong>✝️ Versículos:</strong> ${sc.versiculos}</div>` : ''}
+            </div>
+            ` : ''}
+            <div class="escala-body">
+                <div class="escala-team-section">
+                    <h4>Equipe Escalada</h4>
+                    <div class="escala-team-grid">
+                        ${teamGridHtml}
+                    </div>
+                </div>
+                <div class="escala-setlist-section">
+                    <h4>Setlist do Culto</h4>
+                    <div class="escala-setlist-list">
+                        ${setlistHtml}
+                    </div>
+                </div>
+            </div>
+        `;
+
+        container.appendChild(card);
+    }
+
+function capitalizeFirstLetter(string) {
+    return string.charAt(0).toUpperCase() + string.slice(1);
+}
+
+// Prepare scale creation modal selects & setlist choices
+function populateScaleModalSelects() {
+    // For each select in the form with .select-membro, gather qualified members or all members
+    const selects = document.querySelectorAll(".select-membro");
+    selects.forEach(select => {
+        const targetFuncao = select.getAttribute("data-funcao");
+        select.innerHTML = '<option value="">-- Selecione --</option>';
+
+        // Filter members who perform this function
+        const qualified = appState.members.filter(m => m.funcoes.includes(targetFuncao));
+        const others = appState.members.filter(m => !m.funcoes.includes(targetFuncao));
+
+        if (qualified.length > 0) {
+            const groupQualified = document.createElement("optgroup");
+            groupQualified.label = `${targetFuncao}s Recomendados`;
+            qualified.forEach(m => {
+                const opt = document.createElement("option");
+                opt.value = m.id;
+                opt.textContent = m.nome;
+                groupQualified.appendChild(opt);
+            });
+            select.appendChild(groupQualified);
+        }
+
+        if (others.length > 0) {
+            const groupOthers = document.createElement("optgroup");
+            groupOthers.label = "Outros Integrantes";
+            others.forEach(m => {
+                const opt = document.createElement("option");
+                opt.value = m.id;
+                opt.textContent = m.nome;
+                groupOthers.appendChild(opt);
+            });
+            select.appendChild(groupOthers);
+        }
     });
 }
 
-function showToast(message, type = "info") {
-    const container = document.getElementById("toast-container") || createToastContainer();
-    const toast = document.createElement("div");
-    toast.className = `toast toast-${type}`;
-    toast.textContent = message;
-    container.appendChild(toast);
+function openScaleModal(scaleId = "") {
+    const modal = document.getElementById("modal-escala");
+    const form = document.getElementById("form-escala");
+    form.reset();
+    
+    populateScaleModalSelects();
 
-    setTimeout(() => {
-        toast.remove();
-    }, 4000);
+    if (scaleId) {
+        document.getElementById("modal-escala-title").textContent = "Editar Escala de Culto";
+        const sc = appState.schedules.find(s => s.id === scaleId);
+        if (sc) {
+            document.getElementById("escala-id").value = sc.id;
+            document.getElementById("escala-data").value = sc.data;
+            document.getElementById("escala-hora").value = sc.hora;
+            document.getElementById("escala-tipo").value = sc.tipo;
+            document.getElementById("escala-obs").value = sc.obs || "";
+            document.getElementById("escala-tema").value = sc.tema || "";
+            document.getElementById("escala-versiculos").value = sc.versiculos || "";
+
+            // Populate participants
+            document.getElementById("escala-ministro").value = sc.ministro || "";
+            document.getElementById("escala-teclado").value = sc.teclado || "";
+            document.getElementById("escala-violao").value = sc.violao || "";
+            document.getElementById("escala-guitarra").value = sc.guitarra || "";
+            document.getElementById("escala-baixo").value = sc.baixo || "";
+            document.getElementById("escala-bateria").value = sc.bateria || "";
+            document.getElementById("escala-percussao").value = sc.percussao || "";
+            document.getElementById("escala-vocal1").value = sc.vocal1 || "";
+            document.getElementById("escala-vocal2").value = sc.vocal2 || "";
+            document.getElementById("escala-vocal3").value = sc.vocal3 || "";
+            document.getElementById("escala-som").value = sc.som || "";
+            document.getElementById("escala-midia").value = sc.midia || "";
+            document.getElementById("escala-transmissao").value = sc.transmissao || "";
+
+            currentScaleSetlist = [...(sc.setlist || [])];
+        }
+    } else {
+        document.getElementById("modal-escala-title").textContent = "Nova Escala de Culto";
+        document.getElementById("escala-id").value = "";
+        
+        // Auto fill date with next Sunday or today
+        const today = new Date().toISOString().split('T')[0];
+        document.getElementById("escala-data").value = today;
+        document.getElementById("escala-hora").value = "19:00";
+        currentScaleSetlist = [];
+    }
+
+    // Refresh setlist builders
+    renderSetlistBuilder();
+    modal.classList.add("active");
 }
 
-function createToastContainer() {
-    const container = document.createElement("div");
-    container.id = "toast-container";
-    document.body.appendChild(container);
-    return container;
+// ==================== CONFIRMATION TOGGLE ====================
+function getRoleKeyForMember(sc, memberId) {
+    const positions = ["ministro", "teclado", "violao", "guitarra", "baixo", "bateria", "percussao", "vocal1", "vocal2", "vocal3", "som", "midia", "transmissao"];
+    return positions.find(pos => sc[pos] === memberId) || null;
 }
+
+function getRoleLabel(roleKey) {
+    const labels = {
+        ministro: "Ministro(a)",
+        teclado: "Teclado",
+        violao: "Violão",
+        guitarra: "Guitarra",
+        baixo: "Contra-baixo",
+        bateria: "Bateria",
+        percussao: "Percussão",
+        vocal1: "Vocal 1",
+        vocal2: "Vocal 2",
+        vocal3: "Vocal 3",
+        som: "Som",
+        midia: "Mídia",
+        transmissao: "Transmissão"
+    };
+    return labels[roleKey] || "Função";
+}
+
+function notifyUnavailableMembers(sc, member) {
+    const roleKey = getRoleKeyForMember(sc, member.id);
+    const roleLabel = getRoleLabel(roleKey);
+    const formattedDate = new Date(`${sc.data}T${sc.hora}`).toLocaleDateString("pt-BR");
+    const messageText = `Olá! O membro ${member.nome} marcou indisponibilidade para a escala de ${sc.tipo} (${formattedDate} às ${sc.hora}h) na função ${roleLabel}. Por favor, confirme o ajuste da equipe.`;
+
+    const positions = roleKey && roleKey.startsWith("vocal") ? ["vocal1", "vocal2", "vocal3"] : roleKey ? [roleKey] : [];
+    const recipients = [];
+
+    appState.members.forEach(candidate => {
+        if (candidate.id === member.id) return;
+        const isSameRole = positions.some(pos => sc[pos] === candidate.id);
+        if (isSameRole) recipients.push(candidate);
+    });
+
+    appState.users.filter(user => user.role === "administrador").forEach(user => {
+        const recipientPhone = user.telefone;
+        if (recipientPhone) {
+            recipients.push({ id: `user:${user.id}`, nome: user.nome, telefone: recipientPhone });
+        }
+    });
+
+    const uniqueRecipients = recipients.filter((recipient, index, arr) => arr.findIndex(item => item.id === recipient.id) === index);
+
+    uniqueRecipients.forEach(recipient => {
+        const rawPhone = (recipient.telefone || "").replace(/\D/g, "");
+        if (!rawPhone) return;
+        const waLink = `https://wa.me/55${rawPhone}?text=${encodeURIComponent(messageText)}`;
+        window.open(waLink, "_blank", "noopener,noreferrer");
+    });
+
+    if ("Notification" in window && Notification.permission === "granted") {
+        new Notification("Indisponibilidade registrada", {
+            body: "Uma mensagem foi enviada para os colegas da função e para o administrador."
+        });
+    } else if ("Notification" in window && Notification.permission !== "denied") {
+        Notification.requestPermission().catch(() => {});
+    }
+}
+
+function toggleConfirmation(scaleId, memberId) {
+    const sc = appState.schedules.find(s => s.id === scaleId);
+    if (!sc) return;
+
+    const member = appState.members.find(m => m.id === memberId);
+    if (!member) return;
+
+    const isAdmin = appState.currentRole === "administrador";
+    const currentMemberId = getCurrentUserMemberId();
+    const isOwnMember = !!currentMemberId && currentMemberId === memberId;
+
+    if (!isAdmin && !isOwnMember) {
+        showToast("Você só pode confirmar a própria presença.", "danger");
+        return;
+    }
+
+    if (!sc.confirmacoes) sc.confirmacoes = {};
+
+    const cycle = ["pendente", "confirmado", "indisponivel"];
+    const current = sc.confirmacoes[memberId] || "pendente";
+    const nextIndex = (cycle.indexOf(current) + 1) % cycle.length;
+    sc.confirmacoes[memberId] = cycle[nextIndex];
+
+    saveappState();
+    renderSchedules();
+    renderDashboard();
+
+    const labels = { pendente: "Pendente", confirmado: "Confirmado", indisponivel: "Indisponível" };
+    showToast(`Status alterado para: ${labels[cycle[nextIndex]]}`, "info");
+
+    if (cycle[nextIndex] === "indisponivel") {
+        notifyUnavailableMembers(sc, member);
+    }
+}
+
+// ==================== SETLIST DROPDOWN BUILD ====================
+function renderSetlistBuilder() {
+    populateSetlistDropdown();
+    renderSetlistBuilderSelected();
+}
+
+function populateSetlistDropdown() {
+    const datalist = document.getElementById("setlist-songs-list");
+    const searchInput = document.getElementById("setlist-song-search");
+    if (!datalist || !searchInput) return;
+
+    datalist.innerHTML = "";
+    const available = appState.songs.filter(song => !currentScaleSetlist.includes(song.id));
+
+    available.forEach(song => {
+        const opt = document.createElement("option");
+        opt.value = `${song.titulo} — ${song.artista} (${song.tom})`;
+        datalist.appendChild(opt);
+    });
+
+    if (!searchInput.value) {
+        searchInput.value = "";
+    }
+}
+
+function getSongFromSearchValue(searchValue) {
+    const normalizedQuery = searchValue.trim().toLowerCase();
+    if (!normalizedQuery) return null;
+
+    const song = appState.songs.find(item => item.titulo.toLowerCase() === normalizedQuery || item.artista.toLowerCase() === normalizedQuery);
+    if (song) return song;
+
+    return appState.songs.find(item => item.titulo.toLowerCase().includes(normalizedQuery) || item.artista.toLowerCase().includes(normalizedQuery) || item.tom.toLowerCase().includes(normalizedQuery)) || null;
+}
+
+function addSongFromDropdown() {
+    const searchInput = document.getElementById("setlist-song-search");
+    if (!searchInput) return;
+    const song = getSongFromSearchValue(searchInput.value);
+    if (!song) return;
+
+    if (!currentScaleSetlist.includes(song.id)) {
+        currentScaleSetlist.push(song.id);
+        searchInput.value = "";
+        renderSetlistBuilder();
+    }
+}
+
+function renderSetlistBuilderSelected() {
+    const listContainer = document.getElementById("setlist-selected-list");
+    const emptyMsg = document.getElementById("setlist-selected-empty");
+    if (!listContainer || !emptyMsg) return;
+    
+    listContainer.innerHTML = "";
+
+    if (currentScaleSetlist.length === 0) {
+        emptyMsg.classList.remove("hidden");
+        return;
+    }
+
+    emptyMsg.classList.add("hidden");
+
+    currentScaleSetlist.forEach((songId, index) => {
+        const song = appState.songs.find(s => s.id === songId);
+        if (!song) return;
+
+        const div = document.createElement("div");
+        div.className = "selection-song-card selected-item";
+        
+        div.innerHTML = `
+            <div>
+                <span class="selection-song-title">${index + 1}. ${song.titulo}</span>
+                <span class="selection-song-artist">${song.artista} · ${song.tom}</span>
+            </div>
+            <div class="song-order-actions">
+                <button type="button" class="btn-order" onclick="moveSongInSetlist(${index}, -1); event.stopPropagation();" ${index === 0 ? 'disabled style="opacity:0.2"' : ''}>
+                    <i data-lucide="chevron-up" style="width:14px; height:14px"></i>
+                </button>
+                <button type="button" class="btn-order" onclick="moveSongInSetlist(${index}, 1); event.stopPropagation();" ${index === currentScaleSetlist.length - 1 ? 'disabled style="opacity:0.2"' : ''}>
+                    <i data-lucide="chevron-down" style="width:14px; height:14px"></i>
+                </button>
+                <button type="button" class="btn-add-remove" onclick="removeSongFromScaleSetlist('${song.id}'); event.stopPropagation();" title="Remover" style="color: var(--danger)">
+                    <i data-lucide="x" style="width:14px; height:14px"></i>
+                </button>
+            </div>
+        `;
+        listContainer.appendChild(div);
+    });
+
+    initLucide();
+}
+
+function addSongToScaleSetlist(songId) {
+    if (!currentScaleSetlist.includes(songId)) {
+        currentScaleSetlist.push(songId);
+        renderSetlistBuilder();
+    }
+}
+
+function removeSongFromScaleSetlist(songId) {
+    currentScaleSetlist = currentScaleSetlist.filter(id => id !== songId);
+    renderSetlistBuilder();
+}
+
+function moveSongInSetlist(index, direction) {
+    const targetIndex = index + direction;
+    if (targetIndex < 0 || targetIndex >= currentScaleSetlist.length) return;
+    
+    // Swap
+    const temp = currentScaleSetlist[index];
+    currentScaleSetlist[index] = currentScaleSetlist[targetIndex];
+    currentScaleSetlist[targetIndex] = temp;
+    
+    renderSetlistBuilderSelected();
+}
+
+function handleScaleSubmit(e) {
+    e.preventDefault();
+
+    const id = document.getElementById("escala-id").value;
+    const scaleData = {
+        data: document.getElementById("escala-data").value,
+        hora: document.getElementById("escala-hora").value,
+        tipo: document.getElementById("escala-tipo").value,
+        obs: document.getElementById("escala-obs").value.trim(),
+        tema: document.getElementById("escala-tema").value.trim(),
+        versiculos: document.getElementById("escala-versiculos").value.trim(),
+        
+        ministro: document.getElementById("escala-ministro").value,
+        teclado: document.getElementById("escala-teclado").value,
+        violao: document.getElementById("escala-violao").value,
+        guitarra: document.getElementById("escala-guitarra").value,
+        baixo: document.getElementById("escala-baixo").value,
+        bateria: document.getElementById("escala-bateria").value,
+        percussao: document.getElementById("escala-percussao").value,
+        vocal1: document.getElementById("escala-vocal1").value,
+        vocal2: document.getElementById("escala-vocal2").value,
+        vocal3: document.getElementById("escala-vocal3").value,
+        som: document.getElementById("escala-som").value,
+        midia: document.getElementById("escala-midia").value,
+        transmissao: document.getElementById("escala-transmissao").value,
+        
+        setlist: [...currentScaleSetlist]
+    };
+
+    if (id) {
+        const index = appState.schedules.findIndex(sc => sc.id === id);
+        if (index !== -1) {
+            // Preserve existing confirmacoes
+            const existingConfirmacoes = appState.schedules[index].confirmacoes || {};
+            appState.schedules[index] = { id, ...scaleData, confirmacoes: existingConfirmacoes };
+            showToast("Escala de culto atualizada!");
+        }
+    } else {
+        // Initialize confirmacoes for all assigned members as pendente
+        const confirmacoes = {};
+        const positions = ['ministro', 'teclado', 'violao', 'guitarra', 'baixo', 'bateria', 'percusao', 'vocal1', 'vocal2', 'vocal3', 'som', 'midia', 'transmissao'];
+        positions.forEach(pos => {
+            if (scaleData[pos]) {
+                confirmacoes[scaleData[pos]] = "pendente";
+            }
+        });
+        const newScale = {
+            id: 'sc_' + Date.now(),
+            ...scaleData,
+            confirmacoes
+        };
+        appState.schedules.push(newScale);
+        showToast("Escala criada com sucesso!");
+    }
+
+    saveappState();
+    sortappStateData();
+    document.getElementById("modal-escala").classList.remove("active");
+    renderSchedules();
+    renderDashboard();
+}
+
+function deleteScale(scaleId) {
+    if (confirm("Deseja realmente excluir esta escala de culto?")) {
+        appState.schedules = appState.schedules.filter(s => s.id !== scaleId);
+        saveappState();
+        showToast("Escala excluída.", "info");
+        renderSchedules();
+        renderDashboard();
+    }
+}
+
+// ==================== SETTINGS (BACKUP) ====================
+function exportBackup() {
+    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(appState, null, 2));
+    const downloadAnchor = document.createElement('a');
+    downloadAnchor.setAttribute("href", dataStr);
+    
+    const dateStr = new Date().toISOString().split('T')[0];
+    downloadAnchor.setAttribute("download", `Backup_AdoraScale_${dateStr}.json`);
+    document.body.appendChild(downloadAnchor);
+    downloadAnchor.click();
+    downloadAnchor.remove();
+    
+    showToast("Backup exportado com sucesso!");
+}
+
+function importBackup(e) {
+    const fileReader = new FileReader();
+    const file = e.target.files[0];
+    if (!file) return;
+
+    fileReader.onload = function(event) {
+        try {
+            const importedappState = JSON.parse(event.target.result);
+            
+            // Basic structure validation
+            if (importedappState.songs && importedappState.members && importedappState.schedules) {
+                appState = importedappState;
+                saveappState();
+                sortappStateData();
+                renderAll();
+                showToast("Backup importado com sucesso!", "success");
+            } else {
+                showToast("Arquivo de backup inválido. Chaves esperadas não encontradas.", "danger");
+            }
+        } catch (err) {
+            showToast("Erro ao processar o arquivo de backup.", "danger");
+        }
+    };
+    fileReader.readAsText(file);
+    // Reset file input
+    e.target.value = "";
+}
+
+// ==================== WHATSAPP GROUP SHARING ====================
+function shareFullScale(scaleId) {
+    const sc = appState.schedules.find(s => s.id === scaleId);
+    if (!sc) return;
+
+    const formattedDate = new Date(`${sc.data}T${sc.hora}`).toLocaleDateString('pt-BR');
+    
+    // Gather filled positions
+    const getMemberNameText = (id) => {
+        const m = appState.members.find(memb => memb.id === id);
+        return m ? m.nome : 'Não escalado';
+    };
+
+    const rolesList = [
+        { label: "Ministro(a)", name: getMemberNameText(sc.ministro) },
+        { label: "Teclado", name: getMemberNameText(sc.teclado) },
+        { label: "Violão", name: getMemberNameText(sc.violao) },
+        { label: "Guitarra", name: getMemberNameText(sc.guitarra) },
+        { label: "Contra-baixo", name: getMemberNameText(sc.baixo) },
+        { label: "Bateria", name: getMemberNameText(sc.bateria) },
+        { laber: "Percussão", name: getMemberNameText(sc.percussao) },
+        { label: "Vocal 1", name: getMemberNameText(sc.vocal1) },
+        { label: "Vocal 2", name: getMemberNameText(sc.vocal2) },
+        { label: "Vocal 3", name: getMemberNameText(sc.vocal3) },
+        { label: "Som", name: getMemberNameText(sc.som) },
+        { label: "Mídia/Projeção", name: getMemberNameText(sc.midia) },
+        { laber: "Transmissão", name: getMemberNameText(sc.transmissao) }
+    ].filter(r => r.name !== 'Não escalado');
+
+    let teamStr = "";
+    rolesList.forEach(r => {
+        teamStr += `• *${r.label}:* ${r.name}\n`;
+    });
+
+    const setlistSongs = [];
+    if (sc.setlist && sc.setlist.length > 0) {
+        sc.setlist.forEach((songId, idx) => {
+            const song = appState.songs.find(s => s.id === songId);
+            if (song) {
+                setlistSongs.push(`${idx + 1}. ${song.titulo} (${song.tom})`);
+            }
+        });
+    }
+    const setlistStr = setlistSongs.length > 0 ? setlistSongs.join('\n') : 'A definir';
+
+    const messageText = `🎸 *ESCALA DE LOUVOR* 🎸\n\n` +
+        `📅 *Culto:* ${sc.tipo}${sc.obs ? ` (${sc.obs})` : ''}\n` +
+        `📆 *Data:* ${formattedDate} às ${sc.hora}h\n\n` +
+        `👥 *EQUIPE ESCALADA:*\n${teamStr}\n` +
+        `🎵 *SETLIST:*\n${setlistStr}\n\n` +
+        `Favor confirmar presença! Deus abençoe! 🙌`;
+
+    const waLink = `https://api.whatsapp.com/send?text=${encodeURIComponent(messageText)}`;
+    window.open(waLink, '_blank');
+}
+
