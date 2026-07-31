@@ -430,34 +430,27 @@ async function loadappState() {
     }
 }
 
-// DECLARAÇÃO DA FUNÇÃO DE NAVEGAÇÃO DOS MENUS
+// NAVEGAÇÃO E RENDERIZAÇÃO AUTOMÁTICA
 function setupNavigation() {
-    // Usa escuta global no documento para pegar qualquer clique no menu
     document.addEventListener('click', (e) => {
-        // Encontra o elemento clicado que possui link, data-page, data-target ou classe de menu
         const navItem = e.target.closest('a, button, [data-page], [data-target], .menu-item, .nav-item');
-        
         if (!navItem) return;
 
-        // Tenta capturar para qual tela o botão deve apontar
         const target = navItem.getAttribute('data-page') || 
                        navItem.getAttribute('data-target') || 
                        navItem.getAttribute('href')?.replace('#', '') ||
                        navItem.id?.replace('nav-', '')?.replace('btn-', '');
 
         if (!target) return;
-
-        // Se encontrou um alvo válido, cancela a ação padrão
         e.preventDefault();
 
-        // 1. Oculta todas as telas/seções
-        const allSections = document.querySelectorAll('main > section, main > div, .page-section, section');
-        allSections.forEach(sec => {
+        // 1. Esconde todas as seções
+        document.querySelectorAll('main > section, main > div, .page-section, section').forEach(sec => {
             sec.style.setProperty('display', 'none', 'important');
             sec.classList.add('hidden');
         });
 
-        // 2. Busca e exibe a seção correspondente
+        // 2. Mostra a seção selecionada
         const activeSection = document.getElementById(target) || 
                               document.getElementById(`${target}-section`) || 
                               document.querySelector(`[data-section="${target}"]`);
@@ -465,10 +458,33 @@ function setupNavigation() {
         if (activeSection) {
             activeSection.style.setProperty('display', 'block', 'important');
             activeSection.classList.remove('hidden');
-            console.log(`Navegado com sucesso para: #${activeSection.id}`);
-        } else {
-            console.warn(`Clique detectado para "${target}", mas a seção <section id="${target}"> não existe no HTML.`);
+
+            // 3. RENDERIZA OS DADOS DE ACORDO COM A TELA ABERTA
+            switch (target) {
+                case 'songs':
+                case 'repertorio':
+                case 'musicas':
+                    if (typeof renderSongs === 'function') renderSongs();
+                    break;
+                case 'members':
+                case 'equipe':
+                case 'membros':
+                    if (typeof renderMembers === 'function') renderMembers();
+                    break;
+                case 'schedules':
+                case 'escalas':
+                    if (typeof renderSchedules === 'function') renderSchedules();
+                    break;
+                case 'dashboard':
+                case 'inicio':
+                    if (typeof renderDashboard === 'function') renderDashboard();
+                    break;
+            }
         }
+
+        // Destaca o botão ativo no menu
+        document.querySelectorAll('nav a, .menu-item').forEach(item => item.classList.remove('active'));
+        navItem.classList.add('active');
     });
 }
 
