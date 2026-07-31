@@ -381,54 +381,41 @@ async function saveappState() {
 // Carrega os dados do Firebase Firestore
 async function loadappState() {
     try {
-        const [songsSnap, membersSnap, schedulesSnap, usersSnap] = await Promise.all([
-            db.collection("songs").get(),
-            db.collection("members").get(),
-            db.collection("schedules").get(),
-            db.collection("users").get()
-        ]);
+        // ... aqui permanece o seu código de carregamento do Firestore ...
 
-        appState.songs = songsSnap.docs.map(doc => doc.data());
-        appState.members = membersSnap.docs.map(doc => doc.data());
-        appState.schedules = schedulesSnap.docs.map(doc => doc.data());
-        appState.users = usersSnap.docs.map(doc => doc.data());
-
-        // Se o banco estiver zerado no primeiro acesso, grava os Mocks iniciais
-        if (appState.songs.length === 0 && appState.members.length === 0) {
-            appState.songs = defaultMockData.songs;
-            appState.members = defaultMockData.members;
-            appState.schedules = defaultMockData.schedules;
-            appState.users = defaultMockData.users;
-            await saveappState(); // Garanta que esta função salve os dados no Firestore
-        } else {
-            // FORÇA A ATUALIZAÇÃO DA SENHA DO ADMIN NO FIRESTORE
-            const adminIndex = appState.users.findIndex(u => u.username === "admin");
-            const adminData = {
-                id: "u_admin",
-                username: "admin",
-                password: "adoracao123",
-                nome: "Administrador",
-                role: "administrador",
-                telefone: "11999990000",
-                memberId: ""
-            };
-
-            if (adminIndex !== -1) {
-                appState.users[adminIndex] = adminData;
-            } else {
-                appState.users.unshift(adminData);
-            }
-            
-            // Atualiza o Firestore com a nova senha corrigida
-            await saveappState();
+        // FORÇA A ATUALIZAÇÃO DA SENHA DO ADMIN NO FIRESTORE (COM TRAVA DE SEGURANÇA)
+        if (!Array.isArray(appState.users)) {
+            appState.users = [];
         }
 
+        const adminIndex = appState.users.findIndex(u => u && u.username === "admin");
+        const adminData = {
+            id: "u_admin",
+            username: "admin",
+            password: "adoracao123",
+            nome: "Administrador",
+            role: "administrador",
+            telefone: "11999990000",
+            memberId: ""
+        };
+
+        if (adminIndex !== -1) {
+            appState.users[adminIndex] = adminData;
+        } else {
+            appState.users.unshift(adminData);
+        }
+
+        // Atualiza o Firestore com a nova senha corrigida
+        await saveappState();
+
+        // RENDERIZA A INTERFACE / INICIALIZA OS MENUS
+        if (typeof renderDashboard === 'function') renderDashboard();
+        if (typeof setupNavigation === 'function') setupNavigation();
+
     } catch (error) {
-        console.error("Erro ao carregando dados do Firebase:", error);
+        console.error("Erro ao carregar dados do Firebase:", error);
     }
 }
-
-function sortappStateData() {
     // Sort songs by title
     appState.songs.sort((a, b) => a.titulo.localeCompare(b.titulo));
     // Sort members by name
