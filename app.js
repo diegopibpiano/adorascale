@@ -378,11 +378,9 @@ async function saveappState() {
   await saveCollection("users", appState.users);
 }
 
-// Carrega os dados do Firebase Firestore
+// CARREGA O ESTADO DA APLICAÇÃO E INICIALIZA A INTERFACE
 async function loadappState() {
     try {
-        // ... aqui permanece o seu código de carregamento do Firestore ...
-
         // FORÇA A ATUALIZAÇÃO DA SENHA DO ADMIN NO FIRESTORE (COM TRAVA DE SEGURANÇA)
         if (!Array.isArray(appState.users)) {
             appState.users = [];
@@ -408,23 +406,58 @@ async function loadappState() {
         // Atualiza o Firestore com a nova senha corrigida
         await saveappState();
 
-        // RENDERIZA A INTERFACE / INICIALIZA OS MENUS
+        // ORDENAÇÃO SEGURA DOS DADOS (DENTRO DO TRY)
+        if (Array.isArray(appState.songs)) {
+            appState.songs.sort((a, b) => (a.titulo || '').localeCompare(b.titulo || ''));
+        }
+        if (Array.isArray(appState.members)) {
+            appState.members.sort((a, b) => (a.nome || '').localeCompare(b.nome || ''));
+        }
+        if (Array.isArray(appState.schedules)) {
+            appState.schedules.sort((a, b) => {
+                const dateA = new Date(`${a.data}T${a.hora}`);
+                const dateB = new Date(`${b.data}T${b.hora}`);
+                return dateA - dateB;
+            });
+        }
+
+        // RENDERIZA A INTERFACE E ATIVA OS MENUS
         if (typeof renderDashboard === 'function') renderDashboard();
-        if (typeof setupNavigation === 'function') setupNavigation();
+        setupNavigation(); // Ativa os cliques de navegação
 
     } catch (error) {
         console.error("Erro ao carregar dados do Firebase:", error);
     }
+}
+
+// DECLARAÇÃO DA FUNÇÃO DE NAVEGAÇÃO DOS MENUS
+function setupNavigation() {
+    const navLinks = document.querySelectorAll('nav a, [data-page]');
     
-    // Sort songs by title
-    appState.songs.sort((a, b) => a.titulo.localeCompare(b.titulo));
-    // Sort members by name
-    appState.members.sort((a, b) => a.nome.localeCompare(b.nome));
-    // Sort schedules by date and time
-    appState.schedules.sort((a, b) => {
-        const dateA = new Date(`${a.data}T${a.hora}`);
-        const dateB = new Date(`${b.data}T${b.hora}`);
-        return dateA - dateB;
+    navLinks.forEach(link => {
+        link.onclick = (e) => {
+            e.preventDefault();
+            
+            const target = link.getAttribute('data-page') || link.getAttribute('href')?.replace('#', '');
+            if (!target) return;
+
+            // Esconde todas as seções
+            document.querySelectorAll('main > section, .page-section, section').forEach(sec => {
+                sec.style.display = 'none';
+                sec.classList.add('hidden');
+            });
+
+            // Mostra a seção clicada
+            const targetSec = document.getElementById(target) || document.getElementById(`${target}-section`);
+            if (targetSec) {
+                targetSec.style.display = 'block';
+                targetSec.classList.remove('hidden');
+            }
+
+            // Destaca o botão ativo no menu
+            document.querySelectorAll('nav a').forEach(a => a.classList.remove('active'));
+            link.classList.add('active');
+        };
     });
 }
 
