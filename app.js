@@ -421,9 +421,13 @@ async function loadappState() {
             });
         }
 
-        // RENDERIZA A INTERFACE E ATIVA OS MENUS
+// RENDERIZA TODAS AS TELAS COM OS DADOS CARREGADOS
         if (typeof renderDashboard === 'function') renderDashboard();
-        setupNavigation(); // Ativa os cliques de navegação
+        if (typeof renderSongs === 'function') renderSongs();
+        if (typeof renderMembers === 'function') renderMembers();
+        if (typeof renderSchedules === 'function') renderSchedules();
+
+        setupNavigation(); // Ativa os eventos do menu
 
     } catch (error) {
         console.error("Erro ao carregar dados do Firebase:", error);
