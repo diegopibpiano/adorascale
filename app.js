@@ -415,7 +415,7 @@ async function loadappState() {
     } catch (error) {
         console.error("Erro ao carregar dados do Firebase:", error);
     }
-}
+    
     // Sort songs by title
     appState.songs.sort((a, b) => a.titulo.localeCompare(b.titulo));
     // Sort members by name
