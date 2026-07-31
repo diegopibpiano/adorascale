@@ -368,10 +368,15 @@ function initRole() {
 }
 
 function setupEventListeners() {
-    document.querySelectorAll(".nav-btn").forEach(btn => {
+    // Escuta cliques em todos os botões de navegação
+    document.querySelectorAll(".nav-btn, [data-tab]").forEach(btn => {
         btn.addEventListener("click", (e) => {
-            const tab = e.currentTarget.dataset.tab;
-            if (tab) switchTab(tab);
+            // Busca o data-tab no próprio elemento ou no mestre mais próximo
+            const targetBtn = e.currentTarget.closest("[data-tab]");
+            if (targetBtn) {
+                const tab = targetBtn.dataset.tab;
+                switchTab(tab);
+            }
         });
     });
 }
