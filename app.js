@@ -385,10 +385,10 @@ async function loadappState() {
 
         // Se o banco estiver zerado no primeiro acesso, grava os Mocks iniciais
         if (appState.songs.length === 0 && appState.members.length === 0) {
-            appState.songs = MOCK_SONGS;
-            appState.members = MOCK_MEMBERS;
-            appState.schedules = MOCK_SCHEDULES;
-            appState.users = MOCK_USERS;
+            appState.songs = defaultMockData.songs;
+            appState.members = defaultMockData.members;
+            appState.schedules = defaultMockData.schedules;
+            appState.users = defaultMockData.users;
             await saveappState(); // Garanta que esta função salve os dados no Firestore
         } else {
             // FORÇA A ATUALIZAÇÃO DA SENHA DO ADMIN NO FIRESTORE
@@ -508,7 +508,7 @@ function setupEventListeners() {
                 currentUser: null,
                 currentRole: "usuario"
             };
-            saveAppState();
+            saveappState();
             renderAll();
             showToast("Todos os dados foram apagados.", "danger");
         }
@@ -712,7 +712,7 @@ function handleAccessSubmit(e) {
         showToast("Novo acesso cadastrado com sucesso.", "success");
     }
 
-    saveAppState();
+    saveappState();
     renderSettings();
     resetAccessForm();
 
@@ -1060,7 +1060,7 @@ function handleSongSubmit(e) {
         showToast("Música adicionada ao repertório!");
     }
 
-    saveAppState();
+    saveappState();
     sortappStateData();
     document.getElementById("modal-musica").classList.remove("active");
     renderSongs();
@@ -1088,7 +1088,7 @@ function deleteSong(songId) {
         // Remove from appState songs
         appState.songs = appState.songs.filter(s => s.id !== songId);
         
-        saveAppState();
+        saveappState();
         showToast("Música excluída com sucesso.", "info");
         renderSongs();
         renderDashboard();
