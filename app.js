@@ -11,11 +11,6 @@ const firebaseConfig = {
 // Inicializa o Firebase e o Firestore
 firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
-let messaging = null;
-
-if (firebase.messaging.isSupported()) {
-    messaging = firebase.messaging();
-}
 
 // ==================== STATE MANAGEMENT ====================
 let appState = {
@@ -26,8 +21,6 @@ let appState = {
     currentUser: null,
     currentRole: "usuario"
 };
-
-let isInitialLoad = true; // Flag para indicar se é o primeiro carregamento da aplicação
 
 function buildDefaultUsers() {
     const users = [{
@@ -57,7 +50,7 @@ function buildDefaultUsers() {
     return users;
 }
 
-// Default Mock Data
+// Default Mock Data in Portuguese
 const defaultMockData = {
     songs: [
         {
@@ -199,14 +192,13 @@ let currentScaleSetlist = [];
 
 // ==================== APP INITIALIZATION ====================
 document.addEventListener("DOMContentLoaded", async () => {
+    await loadappState();
     setupEventListeners();
     updateLiveDate();
-    registerServiceWorker();
-    setupRealtimeListeners(); // Sincronização automática em tempo real
     initRole();
     initLucide();
     switchTab("dashboard");
-    requestNotificationPermission();
+    registerServiceWorker();
 });
 
 // ==================== PWA SERVICE WORKER REGISTRATION ====================
@@ -217,24 +209,14 @@ function registerServiceWorker() {
         }).catch((error) => {
             console.log("[PWA] Service Worker registration failed:", error);
         });
+    } else {
+        console.log("[PWA] Service Workers not supported in this browser");
     }
 }
 
-async function requestNotificationPermission() {
-    if (!messaging) return;
-    try {
-        const permission = await Notification.requestPermission();
-        if (permission === 'granted') {
-            const token = await messaging.getToken({
-                vapidKey: 'YOUR_VAPID_KEY_HERE' // Substitua com sua VAPID Key gerada no Firebase Console se utilizar Push via servidor
-            });
-            if (token && appState.currentUser) {
-                // Registra token FCM no perfil do usuário no Firestore
-                db.collection("users").doc(appState.currentUser.id).update({ fcmToken: token });
-            }
-        }
-    } catch (err) {
-        console.log("Permissão de notificação negada ou não suportada.", err);
+function initLucide() {
+    if (typeof lucide !== 'undefined') {
+        lucide.createIcons();
     }
 }
 
