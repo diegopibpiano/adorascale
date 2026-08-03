@@ -6,8 +6,7 @@ const firebaseConfig = {
   storageBucket: "adorascale.firebasestorage.app",
   messagingSenderId: "717015706908",
   appId: "1:717015706908:web:aa2e944ee990580b791ed9"
-const SERVER_KEY = "YOUR_SERVER_KEY"; // Placeholder for Firebase Cloud Messaging server key
-;
+};
 
 // Inicializa o Firebase e o Firestore
 firebase.initializeApp(firebaseConfig);
@@ -346,10 +345,6 @@ function handleLoginSubmit(e) {
       console.error('Login error:', error);
       showToast('Login ou senha incorretos!', 'danger');
     });
-}
-
-// Duplicate login handler removed; authentication now handled via Firebase Auth.
-
 }
 
 // Salva uma coleção inteira no Firestore
@@ -1161,6 +1156,8 @@ function handleSongSubmit(e) {
     renderDashboard();
 }
 
+
+
 function deleteSong(songId) {
     const song = appState.songs.find(s => s.id === songId);
     if (!song) return;
@@ -1771,13 +1768,7 @@ function notifyUnavailableMembers(sc, member) {
         window.open(waLink, "_blank", "noopener,noreferrer");
     });
 
-    if ("Notification" in window && Notification.permission === "granted") {
-        new Notification("Indisponibilidade registrada", {
-            body: "Uma mensagem foi enviada para os colegas da função e para o administrador."
-        });
-    } else if ("Notification" in window && Notification.permission !== "denied") {
-        Notification.requestPermission().catch(() => {});
-    }
+
 }
 
 function toggleConfirmation(scaleId, memberId) {
@@ -1984,8 +1975,6 @@ function handleScaleSubmit(e) {
         };
         appState.schedules.push(newScale);
         showToast("Escala criada com sucesso!");
-        // Trigger push notification to participants (placeholder implementation)
-        sendPushNotification(newScale);
 
     }
 
@@ -1996,53 +1985,7 @@ function handleScaleSubmit(e) {
     renderDashboard();
 }
 
-function sendPushNotification(scale) {
-    // Collect participant member IDs from the scale positions
-    const participantMemberIds = [];
-    const positions = ['ministro', 'teclado', 'violao', 'guitarra', 'baixo', 'bateria', 'percussao', 'vocal1', 'vocal2', 'vocal3', 'som', 'midia', 'transmissao'];
-    positions.forEach(pos => {
-        if (scale[pos]) {
-            participantMemberIds.push(scale[pos]);
-        }
-    });
 
-    // Map member IDs to user FCM tokens (assumes each user may have a fcmToken field)
-    const tokens = participantMemberIds.map(memberId => {
-        const user = appState.users.find(u => u.memberId === memberId);
-        return user && user.fcmToken ? user.fcmToken : null;
-    }).filter(t => t);
-
-    if (tokens.length === 0) {
-        console.warn('No FCM tokens found for scale participants. Notification not sent.');
-        return;
-    }
-
-    const payload = {
-        registration_ids: tokens,
-        data: {
-            title: 'Nova escala programada',
-            body: `Nova escala para ${scale.data} às ${scale.hora} - ${scale.tipo}`,
-            scaleId: scale.id
-        }
-    };
-
-    fetch('https://fcm.googleapis.com/fcm/send', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `key=${SERVER_KEY}`
-        },
-        body: JSON.stringify(payload)
-    })
-    .then(response => {
-        if (!response.ok) {
-            console.error('FCM request failed', response.statusText);
-        }
-        return response.json();
-    })
-    .then(data => console.log('FCM response', data))
-    .catch(err => console.error('FCM error', err));
-}
 
     if (confirm("Deseja realmente excluir esta escala de culto?")) {
         appState.schedules = appState.schedules.filter(s => s.id !== scaleId);
@@ -2051,7 +1994,6 @@ function sendPushNotification(scale) {
         renderSchedules();
         renderDashboard();
     }
-}
 
 // ==================== SETTINGS (BACKUP) ====================
 function exportBackup() {
