@@ -444,7 +444,6 @@ async function loadappState() {
     if (typeof renderSongs === 'function') renderSongs();
     if (typeof renderMembers === 'function') renderMembers();
     if (typeof renderSchedules === 'function') renderSchedules();
-    setupNavigation();
   } catch (error) {
     console.error("Erro ao carregar dados do Firebase:", error);
     // Fallback to mock data if Firestore fails
@@ -453,63 +452,7 @@ async function loadappState() {
   }
 }
 
-// NAVEGAÇÃO E RENDERIZAÇÃO AUTOMÁTICA
-function setupNavigation() {
-    document.addEventListener('click', (e) => {
-        const navItem = e.target.closest('a, button, [data-page], [data-target], .menu-item, .nav-item');
-        if (!navItem) return;
 
-        const target = navItem.getAttribute('data-page') || 
-                       navItem.getAttribute('data-target') || 
-                       navItem.getAttribute('href')?.replace('#', '') ||
-                       navItem.id?.replace('nav-', '')?.replace('btn-', '');
-
-        if (!target) return;
-        e.preventDefault();
-
-        // 1. Esconde todas as seções
-        document.querySelectorAll('main > section, main > div, .page-section, section').forEach(sec => {
-            sec.style.setProperty('display', 'none', 'important');
-            sec.classList.add('hidden');
-        });
-
-        // 2. Mostra a seção selecionada
-        const activeSection = document.getElementById(target) || 
-                              document.getElementById(`${target}-section`) || 
-                              document.querySelector(`[data-section="${target}"]`);
-
-        if (activeSection) {
-            activeSection.style.setProperty('display', 'block', 'important');
-            activeSection.classList.remove('hidden');
-
-            // 3. RENDERIZA OS DADOS DE ACORDO COM A TELA ABERTA
-            switch (target) {
-                case 'songs':
-                case 'repertorio':
-                case 'musicas':
-                    if (typeof renderSongs === 'function') renderSongs();
-                    break;
-                case 'members':
-                case 'equipe':
-                case 'membros':
-                    if (typeof renderMembers === 'function') renderMembers();
-                    break;
-                case 'schedules':
-                case 'escalas':
-                    if (typeof renderSchedules === 'function') renderSchedules();
-                    break;
-                case 'dashboard':
-                case 'inicio':
-                    if (typeof renderDashboard === 'function') renderDashboard();
-                    break;
-            }
-        }
-
-        // Destaca o botão ativo no menu
-        document.querySelectorAll('nav a, .menu-item').forEach(item => item.classList.remove('active'));
-        navItem.classList.add('active');
-    });
-}
 
 // Update the real date badge in header
 function updateLiveDate() {
