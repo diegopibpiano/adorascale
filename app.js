@@ -413,81 +413,105 @@ async function saveCollection(collectionName, dataArray) {
   }
 }
 
-// Salva todo o estado da aplicação no Firebase
+// Salva todo o estado da aplicação no LocalStorage e no Firestore
 async function saveappState() {
-  // Garante que nenhuma propriedade do appState seja undefined
   appState.songs = appState.songs || [];
   appState.members = appState.members || [];
   appState.schedules = appState.schedules || [];
   appState.users = appState.users || [];
 
+  // 1. Salva no LocalStorage do navegador/dispositivo imediatamente
+  try {
+    localStorage.setItem("adorascale_songs", JSON.stringify(appState.songs));
+    localStorage.setItem("adorascale_members", JSON.stringify(appState.members));
+    localStorage.setItem("adorascale_schedules", JSON.stringify(appState.schedules));
+    localStorage.setItem("adorascale_users", JSON.stringify(appState.users));
+  } catch (err) {
+    console.warn("Erro ao salvar no LocalStorage:", err);
+  }
+
+  // 2. Sincroniza com a nuvem no Firestore
   await saveCollection("songs", appState.songs);
   await saveCollection("members", appState.members);
   await saveCollection("schedules", appState.schedules);
   await saveCollection("users", appState.users);
 }
 
-// Load application state from Firestore
+// Carrega o estado da aplicação do LocalStorage e do Firestore
 async function loadappState() {
+  // 1. Tenta carregar do LocalStorage local primeiro (exibição imediata)
   try {
-    // Fetch collections from Firestore
+    const lSongs = localStorage.getItem("adorascale_songs");
+    const lMembers = localStorage.getItem("adorascale_members");
+    const lSchedules = localStorage.getItem("adorascale_schedules");
+    const lUsers = localStorage.getItem("adorascale_users");
+
+    if (lSongs) appState.songs = JSON.parse(lSongs);
+    if (lMembers) appState.members = JSON.parse(lMembers);
+    if (lSchedules) appState.schedules = JSON.parse(lSchedules);
+    if (lUsers) appState.users = JSON.parse(lUsers);
+  } catch (e) {
+    console.warn("Erro ao carregar LocalStorage:", e);
+  }
+
+  // Se alguma lista ainda estiver vazia, carrega o mock padrão
+  if (!appState.songs || appState.songs.length === 0) appState.songs = defaultMockData.songs;
+  if (!appState.members || appState.members.length === 0) appState.members = defaultMockData.members;
+  if (!appState.schedules || appState.schedules.length === 0) appState.schedules = defaultMockData.schedules;
+  if (!appState.users || appState.users.length === 0) appState.users = buildDefaultUsers();
+
+  renderAll();
+
+  // 2. Busca os dados mais recentes do Firestore na nuvem
+  try {
     const collections = ['songs', 'members', 'schedules', 'users'];
     for (const coll of collections) {
       const snapshot = await db.collection(coll).get();
       const data = [];
-      snapshot.forEach(doc => {
-        data.push(doc.data());
-      });
+      snapshot.forEach(doc => data.push(doc.data()));
       if (data.length > 0) {
         appState[coll] = data;
+        localStorage.setItem(`adorascale_${coll}`, JSON.stringify(data));
       }
     }
-    // Ensure admin user exists (hardcoded)
-    const adminEmail = 'admin'; // using username field as email placeholder
-    const adminIndex = appState.users.findIndex(u => u.username === adminEmail);
-    const adminData = {
-      id: "u_admin",
-      username: "admin",
-      password: "adoracao123",
-      nome: "Administrador",
-      role: "administrador",
-      telefone: "11999990000",
-      memberId: ""
-    };
-    if (adminIndex !== -1) {
-      appState.users[adminIndex] = adminData;
-    } else {
-      appState.users.unshift(adminData);
-    }
-    // If any collection still empty, fallback to default mock data
-    if (!appState.songs || appState.songs.length === 0) appState.songs = defaultMockData.songs;
-    if (!appState.members || appState.members.length === 0) appState.members = defaultMockData.members;
-    if (!appState.schedules || appState.schedules.length === 0) appState.schedules = defaultMockData.schedules;
-    // Sort data
-    if (Array.isArray(appState.songs)) {
-      appState.songs.sort((a, b) => (a.titulo || '').localeCompare(b.titulo || ''));
-    }
-    if (Array.isArray(appState.members)) {
-      appState.members.sort((a, b) => (a.nome || '').localeCompare(b.nome || ''));
-    }
-    if (Array.isArray(appState.schedules)) {
-      appState.schedules.sort((a, b) => {
-        const dateA = new Date(`${a.data}T${a.hora}`);
-        const dateB = new Date(`${b.data}T${b.hora}`);
-        return dateA - dateB;
-      });
-    }
-    // Render UI
-    if (typeof renderDashboard === 'function') renderDashboard();
-    if (typeof renderSongs === 'function') renderSongs();
-    if (typeof renderMembers === 'function') renderMembers();
-    if (typeof renderSchedules === 'function') renderSchedules();
   } catch (error) {
-    console.error("Erro ao carregar dados do Firebase:", error);
-    // Fallback to mock data if Firestore fails
-    appState = { ...defaultMockData, users: buildDefaultUsers(), currentUser: null, currentRole: "usuario" };
-    renderAll();
+    console.error("Erro ao sincronizar com Firestore:", error);
   }
+
+  // Garante que o administrador existe
+  const adminIndex = appState.users.findIndex(u => u.username === 'admin');
+  const adminData = {
+    id: "u_admin",
+    username: "admin",
+    password: "adoracao123",
+    nome: "Administrador",
+    role: "administrador",
+    telefone: "11999990000",
+    memberId: ""
+  };
+  if (adminIndex !== -1) {
+    appState.users[adminIndex] = adminData;
+  } else {
+    appState.users.unshift(adminData);
+  }
+
+  // Ordenação dos dados
+  if (Array.isArray(appState.songs)) {
+    appState.songs.sort((a, b) => (a.titulo || '').localeCompare(b.titulo || ''));
+  }
+  if (Array.isArray(appState.members)) {
+    appState.members.sort((a, b) => (a.nome || '').localeCompare(b.nome || ''));
+  }
+  if (Array.isArray(appState.schedules)) {
+    appState.schedules.sort((a, b) => {
+      const dateA = new Date(`${a.data}T${a.hora}`);
+      const dateB = new Date(`${b.data}T${b.hora}`);
+      return dateA - dateB;
+    });
+  }
+
+  // Renderiza novamente após sincronizar com o Firestore
+  renderAll();
 }
 
 
