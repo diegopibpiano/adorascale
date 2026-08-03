@@ -385,32 +385,30 @@ function handleLoginSubmit(e) {
   }
 }
 
-// Salva uma coleção inteira no Firestore
+// Salva/sincroniza itens individuais no Firestore sem apagar toda a coleção
 async function saveCollection(collectionName, dataArray) {
-    try {
-        const batch = db.batch();
-        
-        // Limpa registros anteriores para sincronizar a lista inteira
-        const snapshot = await db.collection(collectionName).get();
-        snapshot.docs.forEach((doc) => {
-            batch.delete(doc.ref);
-        });
-
-// Grava os novos registros com proteção contra undefined
-    const itemsToSave = Array.isArray(dataArray) ? dataArray : [];
+    if (typeof db === 'undefined' || !db) return;
+    const items = Array.isArray(dataArray) ? dataArray : [];
     
-    itemsToSave.forEach((item) => {
-        const docRef = item.id 
-            ? db.collection(collectionName).doc(String(item.id)) 
-            : db.collection(collectionName).doc();
-        batch.set(docRef, item);
-    });
+    // Salva documento por documento usando set com merge
+    for (const item of items) {
+        if (!item || !item.id) continue;
+        try {
+            await db.collection(collectionName).doc(String(item.id)).set(item, { merge: true });
+        } catch (err) {
+            console.warn(`Aviso ao sincronizar ${item.id} em ${collectionName}:`, err);
+        }
+    }
+}
 
-    await batch.commit();
-    console.log(`Coleção ${collectionName} sincronizada com sucesso.`);
-  } catch (error) {
-    console.error(`Erro ao salvar ${collectionName}:`, error);
-  }
+// Remove um documento específico do Firestore
+async function deleteFromCollection(collectionName, itemId) {
+    if (typeof db === 'undefined' || !db || !itemId) return;
+    try {
+        await db.collection(collectionName).doc(String(itemId)).delete();
+    } catch (err) {
+        console.warn(`Aviso ao remover ${itemId} de ${collectionName}:`, err);
+    }
 }
 
 // Salva todo o estado da aplicação no LocalStorage e no Firestore
@@ -420,7 +418,7 @@ async function saveappState() {
   appState.schedules = appState.schedules || [];
   appState.users = appState.users || [];
 
-  // 1. Salva no LocalStorage do navegador/dispositivo imediatamente
+  // 1. Salva imediatamente no LocalStorage
   try {
     localStorage.setItem("adorascale_songs", JSON.stringify(appState.songs));
     localStorage.setItem("adorascale_members", JSON.stringify(appState.members));
@@ -430,16 +428,16 @@ async function saveappState() {
     console.warn("Erro ao salvar no LocalStorage:", err);
   }
 
-  // 2. Sincroniza com a nuvem no Firestore
-  await saveCollection("songs", appState.songs);
-  await saveCollection("members", appState.members);
-  await saveCollection("schedules", appState.schedules);
-  await saveCollection("users", appState.users);
+  // 2. Sincroniza em segundo plano no Firestore
+  saveCollection("songs", appState.songs);
+  saveCollection("members", appState.members);
+  saveCollection("schedules", appState.schedules);
+  saveCollection("users", appState.users);
 }
 
-// Carrega o estado da aplicação do LocalStorage e do Firestore
+// Carrega o estado da aplicação do LocalStorage e mescla com Firestore
 async function loadappState() {
-  // 1. Tenta carregar do LocalStorage local primeiro (exibição imediata)
+  // 1. Tenta carregar do LocalStorage local primeiro (exibição instantânea)
   try {
     const lSongs = localStorage.getItem("adorascale_songs");
     const lMembers = localStorage.getItem("adorascale_members");
@@ -454,7 +452,7 @@ async function loadappState() {
     console.warn("Erro ao carregar LocalStorage:", e);
   }
 
-  // Se alguma lista ainda estiver vazia, carrega o mock padrão
+  // Se alguma lista estiver vazia, usa o mock padrão
   if (!appState.songs || appState.songs.length === 0) appState.songs = defaultMockData.songs;
   if (!appState.members || appState.members.length === 0) appState.members = defaultMockData.members;
   if (!appState.schedules || appState.schedules.length === 0) appState.schedules = defaultMockData.schedules;
@@ -462,20 +460,28 @@ async function loadappState() {
 
   renderAll();
 
-  // 2. Busca os dados mais recentes do Firestore na nuvem
-  try {
-    const collections = ['songs', 'members', 'schedules', 'users'];
-    for (const coll of collections) {
-      const snapshot = await db.collection(coll).get();
-      const data = [];
-      snapshot.forEach(doc => data.push(doc.data()));
-      if (data.length > 0) {
-        appState[coll] = data;
-        localStorage.setItem(`adorascale_${coll}`, JSON.stringify(data));
+  // 2. Busca e mescla com os dados do Firestore na nuvem
+  if (typeof db !== 'undefined' && db) {
+    try {
+      const collections = ['songs', 'members', 'schedules', 'users'];
+      for (const coll of collections) {
+        const snapshot = await db.collection(coll).get();
+        if (!snapshot.empty) {
+          const cloudData = [];
+          snapshot.forEach(doc => cloudData.push(doc.data()));
+
+          // Union/Merge de itens por ID (preserva adições locais e nuvem)
+          const itemMap = new Map();
+          (appState[coll] || []).forEach(item => { if (item && item.id) itemMap.set(String(item.id), item); });
+          cloudData.forEach(item => { if (item && item.id) itemMap.set(String(item.id), item); });
+
+          appState[coll] = Array.from(itemMap.values());
+          localStorage.setItem(`adorascale_${coll}`, JSON.stringify(appState[coll]));
+        }
       }
+    } catch (error) {
+      console.warn("Sincronização remota (Firestore) temporariamente em modo offline:", error);
     }
-  } catch (error) {
-    console.error("Erro ao sincronizar com Firestore:", error);
   }
 
   // Garante que o administrador existe
@@ -510,7 +516,7 @@ async function loadappState() {
     });
   }
 
-  // Renderiza novamente após sincronizar com o Firestore
+  // Renderiza novidades mescladas da nuvem
   renderAll();
 }
 
@@ -1204,6 +1210,7 @@ function deleteSong(songId) {
 
         // Remove from appState songs
         appState.songs = appState.songs.filter(s => s.id !== songId);
+        deleteFromCollection("songs", songId);
         
         saveappState();
         showToast("Música excluída com sucesso.", "info");
@@ -1382,6 +1389,7 @@ function deleteMember(memberId) {
 
         // Remove member
         appState.members = appState.members.filter(m => m.id !== memberId);
+        deleteFromCollection("members", memberId);
         
         saveappState();
         showToast("Integrante removido.", "info");
@@ -2013,13 +2021,16 @@ function handleScaleSubmit(e) {
 
 
 
+function deleteScale(scaleId) {
     if (confirm("Deseja realmente excluir esta escala de culto?")) {
+        deleteFromCollection("schedules", scaleId);
         appState.schedules = appState.schedules.filter(s => s.id !== scaleId);
         saveappState();
         showToast("Escala excluída.", "info");
         renderSchedules();
         renderDashboard();
     }
+}
 
 // ==================== SETTINGS (BACKUP) ====================
 function exportBackup() {
