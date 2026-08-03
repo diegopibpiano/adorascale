@@ -192,14 +192,24 @@ const defaultMockData = {
 let currentScaleSetlist = [];
 
 // ==================== APP INITIALIZATION ====================
-document.addEventListener("DOMContentLoaded", async () => {
-    await loadappState();
+document.addEventListener("DOMContentLoaded", () => {
+    // 1. Initialize fallback state so UI is immediately usable
+    if (!appState.songs || appState.songs.length === 0) {
+        appState = { ...defaultMockData, users: buildDefaultUsers(), currentUser: null, currentRole: "usuario" };
+    }
+
+    // 2. Bind listeners & initialize UI immediately
     setupEventListeners();
     updateLiveDate();
     initRole();
     initLucide();
     switchTab("dashboard");
     registerServiceWorker();
+
+    // 3. Load Firestore data asynchronously in the background
+    loadappState().catch(err => {
+        console.warn("Firestore sync warning/fallback used:", err);
+    });
 });
 
 // ==================== PWA SERVICE WORKER REGISTRATION ====================
@@ -464,15 +474,39 @@ function updateLiveDate() {
     liveDateEl.textContent = today.toLocaleDateString('pt-BR', options);
 }
 
-// ==================== NAVIGATION ====================
+// ==================== NAVIGATION & EVENT LISTENERS ====================
 function setupEventListeners() {
-    // Tab switching
+    // Helper to safely bind event listeners without throwing if element is missing
+    const bind = (id, event, handler) => {
+        const el = document.getElementById(id);
+        if (el) el.addEventListener(event, handler);
+    };
+
+    // Tab switching (nav-item buttons)
     const navItems = document.querySelectorAll(".nav-item");
     navItems.forEach(item => {
-        item.addEventListener("click", () => {
+        item.addEventListener("click", (e) => {
+            e.preventDefault();
             const tabId = item.getAttribute("data-tab");
-            switchTab(tabId);
+            if (tabId) switchTab(tabId);
         });
+    });
+
+    // Delegated click handler as a robust fallback for tabs & login triggers
+    document.addEventListener("click", (e) => {
+        const navBtn = e.target.closest(".nav-item");
+        if (navBtn) {
+            const tabId = navBtn.getAttribute("data-tab");
+            if (tabId) {
+                switchTab(tabId);
+                return;
+            }
+        }
+        const loginBtn = e.target.closest("#btn-login-modal, #mobile-login-btn");
+        if (loginBtn) {
+            toggleLoginappState();
+            return;
+        }
     });
 
     // Modal close listeners
@@ -484,35 +518,29 @@ function setupEventListeners() {
     });
 
     // Song triggers
-    document.getElementById("btn-nova-musica").addEventListener("click", () => openSongModal());
-    document.getElementById("form-musica").addEventListener("submit", handleSongSubmit);
-    document.getElementById("search-músicas").addEventListener("input", renderSongs);
-    document.getElementById("filter-tom").addEventListener("change", renderSongs);
+    bind("btn-nova-musica", "click", () => openSongModal());
+    bind("form-musica", "submit", handleSongSubmit);
+    bind("search-musicas", "input", renderSongs);
+    bind("filter-tom", "change", renderSongs);
 
     // Member triggers
-    document.getElementById("btn-novo-membro").addEventListener("click", () => openMemberModal());
-    document.getElementById("form-membro").addEventListener("submit", handleMemberSubmit);
-    document.getElementById("search-membros").addEventListener("input", renderMembers);
+    bind("btn-novo-membro", "click", () => openMemberModal());
+    bind("form-membro", "submit", handleMemberSubmit);
+    bind("search-membros", "input", renderMembers);
 
     // Schedule triggers
-    document.getElementById("btn-nova-escala").addEventListener("click", () => openScaleModal());
-    document.getElementById("form-escala").addEventListener("submit", handleScaleSubmit);
-    document.getElementById("search-escalas").addEventListener("input", renderSchedules);
+    bind("btn-nova-escala", "click", () => openScaleModal());
+    bind("form-escala", "submit", handleScaleSubmit);
+    bind("search-escalas", "input", renderSchedules);
 
     // Backup actions
-    document.getElementById("btn-exportar-backup").addEventListener("click", exportBackup);
-    document.getElementById("import-file").addEventListener("change", importBackup);
+    bind("btn-exportar-backup", "click", exportBackup);
+    bind("import-file", "change", importBackup);
 
     // Access management
-    const accessForm = document.getElementById("form-acesso");
-    if (accessForm) {
-        accessForm.addEventListener("submit", handleAccessSubmit);
-    }
-    const resetAccessBtn = document.getElementById("btn-limpar-acesso");
-    if (resetAccessBtn) {
-        resetAccessBtn.addEventListener("click", resetAccessForm);
-    }
-    document.getElementById("btn-reset-demo").addEventListener("click", () => {
+    bind("form-acesso", "submit", handleAccessSubmit);
+    bind("btn-limpar-acesso", "click", resetAccessForm);
+    bind("btn-reset-demo", "click", () => {
         if (confirm("Deseja realmente carregar os dados demonstrativos? Isso substituirá as alterações atuais.")) {
             localStorage.clear();
             loadappState();
@@ -520,7 +548,7 @@ function setupEventListeners() {
             showToast("Dados demonstrativos recarregados!", "info");
         }
     });
-    document.getElementById("btn-limpar-dados").addEventListener("click", () => {
+    bind("btn-limpar-dados", "click", () => {
         if (confirm("ATENÇÃO: Deseja apagar todos os dados permanentemente? Essa ação não pode ser desfeita.")) {
             appState = {
                 songs: [],
@@ -537,11 +565,13 @@ function setupEventListeners() {
     });
 
     // Login triggers
-    document.getElementById("btn-login-modal").addEventListener("click", toggleLoginappState);
-    document.getElementById("form-login").addEventListener("submit", handleLoginSubmit);
+    bind("btn-login-modal", "click", toggleLoginappState);
+    bind("mobile-login-btn", "click", toggleLoginappState);
+    bind("form-login", "submit", handleLoginSubmit);
 }
 
 function switchTab(tabId) {
+    window.switchTab = switchTab;
     // Toggle active classes on nav
     document.querySelectorAll(".nav-item").forEach(item => {
         if (item.getAttribute("data-tab") === tabId) {
@@ -958,10 +988,11 @@ function createTimelineItem(sc) {
 
 // ==================== SONG DIRECTORY (REPERTORIO) ====================
 function renderSongs() {
-    const tableBody = document.getElementById("músicas-list-table");
+    const tableBody = document.getElementById("musicas-list-table");
     const emptyappState = document.getElementById("repertorio-empty");
-    const searchQuery = document.getElementById("search-músicas").value.toLowerCase();
-    const filterTom = document.getElementById("filter-tom").value;
+    const searchEl = document.getElementById("search-musicas");
+    const searchQuery = searchEl ? searchEl.value.toLowerCase() : "";
+    const filterTom = document.getElementById("filter-tom") ? document.getElementById("filter-tom").value : "";
 
     tableBody.innerHTML = "";
 
