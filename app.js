@@ -206,11 +206,71 @@ document.addEventListener("DOMContentLoaded", () => {
     switchTab("dashboard");
     registerServiceWorker();
 
-    // 3. Load Firestore data asynchronously in the background
-    loadappState().catch(err => {
+    // 3. Initialize Firebase Auth session
+    initAuth();
+
+    // 4. Load Firestore data & enable real-time cloud sync
+    loadappState().then(() => {
+        setupRealtimeSync();
+    }).catch(err => {
         console.warn("Firestore sync warning/fallback used:", err);
     });
 });
+
+// ==================== FIREBASE AUTH & REAL-TIME SYNC ====================
+function initAuth() {
+    if (typeof auth !== 'undefined' && auth) {
+        auth.onAuthStateChanged(user => {
+            if (!user) {
+                auth.signInAnonymously().catch(err => {
+                    console.warn("Autenticação anônima temporária:", err);
+                });
+            }
+        });
+    }
+}
+
+function setupRealtimeSync() {
+    if (typeof db === 'undefined' || !db) return;
+
+    const collections = ['songs', 'members', 'schedules', 'users'];
+    collections.forEach(coll => {
+        try {
+            db.collection(coll).onSnapshot(snapshot => {
+                if (snapshot && !snapshot.empty) {
+                    const cloudData = [];
+                    snapshot.forEach(doc => cloudData.push(doc.data()));
+
+                    if (cloudData.length > 0) {
+                        const itemMap = new Map();
+                        (appState[coll] || []).forEach(item => { if (item && item.id) itemMap.set(String(item.id), item); });
+                        cloudData.forEach(item => { if (item && item.id) itemMap.set(String(item.id), item); });
+
+                        appState[coll] = Array.from(itemMap.values());
+                        localStorage.setItem(`adorascale_${coll}`, JSON.stringify(appState[coll]));
+
+                        // Sort
+                        if (coll === 'songs' && Array.isArray(appState.songs)) {
+                            appState.songs.sort((a, b) => (a.titulo || '').localeCompare(b.titulo || ''));
+                        }
+                        if (coll === 'members' && Array.isArray(appState.members)) {
+                            appState.members.sort((a, b) => (a.nome || '').localeCompare(b.nome || ''));
+                        }
+                        if (coll === 'schedules' && Array.isArray(appState.schedules)) {
+                            appState.schedules.sort((a, b) => new Date(`${a.data}T${a.hora}`) - new Date(`${b.data}T${b.hora}`));
+                        }
+
+                        renderAll();
+                    }
+                }
+            }, err => {
+                console.warn(`Aviso de escuta em tempo real para ${coll}:`, err);
+            });
+        } catch (e) {
+            console.warn(`Não foi possível ativar escuta em tempo real para ${coll}:`, e);
+        }
+    });
+}
 
 // ==================== PWA SERVICE WORKER REGISTRATION ====================
 function registerServiceWorker() {
@@ -389,15 +449,16 @@ function handleLoginSubmit(e) {
 async function saveCollection(collectionName, dataArray) {
     if (typeof db === 'undefined' || !db) return;
     const items = Array.isArray(dataArray) ? dataArray : [];
-    
-    // Salva documento por documento usando set com merge
-    for (const item of items) {
-        if (!item || !item.id) continue;
-        try {
-            await db.collection(collectionName).doc(String(item.id)).set(item, { merge: true });
-        } catch (err) {
-            console.warn(`Aviso ao sincronizar ${item.id} em ${collectionName}:`, err);
-        }
+
+    try {
+        const promises = items.map(item => {
+            if (!item || !item.id) return Promise.resolve();
+            return db.collection(collectionName).doc(String(item.id)).set(item, { merge: true });
+        });
+        await Promise.all(promises);
+        console.log(`[Firestore] ${collectionName} sincronizado na nuvem com sucesso (${items.length} itens).`);
+    } catch (err) {
+        console.warn(`[Firestore Error] Falha ao sincronizar ${collectionName}:`, err);
     }
 }
 
