@@ -325,36 +325,64 @@ function toggleLoginappState() {
     }
 }
 
-// Handle login using Firebase Auth
+// Handle login (checks local users first, then Firebase Auth as fallback)
 function handleLoginSubmit(e) {
   e.preventDefault();
   const usernameInput = document.getElementById('login-username');
   const passwordInput = document.getElementById('login-senha');
-  const email = usernameInput ? usernameInput.value.trim() : '';
+  const username = usernameInput ? usernameInput.value.trim() : '';
   const password = passwordInput ? passwordInput.value : '';
 
-  auth.signInWithEmailAndPassword(email, password)
-    .then((userCredential) => {
-      const user = userCredential.user;
-      // Find matching appState user by email (username field)
-      const matched = appState.users.find(u => u.username.toLowerCase() === email.toLowerCase());
-      if (matched) {
-        appState.currentUser = matched;
-        appState.currentRole = matched.role;
-        sessionStorage.setItem('adorascale_currentUser', JSON.stringify(matched));
+  if (!username || !password) {
+    showToast('Por favor, informe usuário e senha.', 'warning');
+    return;
+  }
+
+  // 1. Local credentials check (e.g. admin / adoracao123, user1 / senha123, etc.)
+  const matched = (appState.users || []).find(u => 
+    (u.username.toLowerCase() === username.toLowerCase() || u.id.toLowerCase() === username.toLowerCase()) && 
+    u.password === password
+  );
+
+  if (matched) {
+    appState.currentUser = matched;
+    appState.currentRole = matched.role;
+    sessionStorage.setItem('adorascale_currentUser', JSON.stringify(matched));
+    sessionStorage.setItem('adorascale_role', matched.role);
+    updateRoleUI();
+    showToast(`Bem-vindo(a), ${matched.nome}!`, 'success');
+    const modal = document.getElementById('modal-login');
+    if (modal) modal.classList.remove('active');
+    return;
+  }
+
+  // 2. Firebase Auth fallback
+  if (typeof auth !== 'undefined' && auth.signInWithEmailAndPassword) {
+    auth.signInWithEmailAndPassword(username, password)
+      .then((userCredential) => {
+        const user = userCredential.user;
+        const matchedFb = (appState.users || []).find(u => u.username.toLowerCase() === username.toLowerCase()) || {
+          id: user.uid,
+          username: username,
+          nome: user.displayName || username,
+          role: "administrador"
+        };
+        appState.currentUser = matchedFb;
+        appState.currentRole = matchedFb.role;
+        sessionStorage.setItem('adorascale_currentUser', JSON.stringify(matchedFb));
+        sessionStorage.setItem('adorascale_role', matchedFb.role);
         updateRoleUI();
-        showToast(`Bem-vindo(a), ${matched.nome}!`, 'success');
+        showToast(`Bem-vindo(a), ${matchedFb.nome}!`, 'success');
         const modal = document.getElementById('modal-login');
         if (modal) modal.classList.remove('active');
-        // Save auth state maybe
-      } else {
-        showToast('Usuário não cadastrado no aplicativo.', 'danger');
-      }
-    })
-    .catch((error) => {
-      console.error('Login error:', error);
-      showToast('Login ou senha incorretos!', 'danger');
-    });
+      })
+      .catch((error) => {
+        console.error('Login error:', error);
+        showToast('Login ou senha incorretos!', 'danger');
+      });
+  } else {
+    showToast('Login ou senha incorretos!', 'danger');
+  }
 }
 
 // Salva uma coleção inteira no Firestore
