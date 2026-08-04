@@ -1512,24 +1512,27 @@ button, input, select, textarea {
     display: flex;
     align-items: center;
     gap: 16px;
-    padding: 18px 20px;
-    border-radius: 16px;
-    background: linear-gradient(135deg, rgba(99, 102, 241, 0.18), rgba(15, 23, 42, 0.9));
-    border: 1px solid rgba(99, 102, 241, 0.25);
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.18);
+    padding: 20px 22px;
+    border-radius: 18px;
+    background: linear-gradient(135deg, rgba(99, 102, 241, 0.22), rgba(15, 23, 42, 0.92));
+    border: 1px solid rgba(129, 140, 248, 0.25);
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.2);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
 }
 
 .scale-details-date-pill {
-    min-width: 74px;
-    height: 74px;
-    border-radius: 16px;
-    background: rgba(255, 255, 255, 0.08);
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    min-width: 80px;
+    height: 80px;
+    border-radius: 18px;
+    background: rgba(255, 255, 255, 0.09);
+    border: 1px solid rgba(255, 255, 255, 0.12);
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
     color: var(--text-primary);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.08);
 }
 
 .scale-details-day {
@@ -1569,10 +1572,10 @@ button, input, select, textarea {
     display: inline-flex;
     align-items: center;
     gap: 6px;
-    padding: 6px 10px;
+    padding: 7px 11px;
     border-radius: 999px;
-    background: rgba(255, 255, 255, 0.1);
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(255, 255, 255, 0.12);
+    border: 1px solid rgba(255, 255, 255, 0.15);
     font-size: 0.72rem;
     font-weight: 700;
     text-transform: uppercase;
@@ -1595,15 +1598,17 @@ button, input, select, textarea {
 }
 
 .scale-details-highlight {
-    padding: 12px 14px;
-    border-radius: 12px;
-    background: rgba(255, 255, 255, 0.03);
-    border: 1px solid var(--border-color);
+    padding: 14px 16px;
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.08);
     color: var(--text-secondary);
     display: flex;
     flex-direction: column;
     gap: 6px;
     font-size: 0.9rem;
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
 }
 
 .scale-details-grid {
@@ -1613,13 +1618,16 @@ button, input, select, textarea {
 }
 
 .scale-details-card {
-    background: rgba(255, 255, 255, 0.03);
-    border: 1px solid var(--border-color);
-    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 15px;
     padding: 16px;
     display: flex;
     flex-direction: column;
     gap: 12px;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.05);
 }
 
 .scale-details-card-header h4 {
@@ -1641,10 +1649,17 @@ button, input, select, textarea {
 
 .scale-details-team-grid .escala-member-item {
     min-height: 100%;
-    background: rgba(255, 255, 255, 0.04);
-    border-color: rgba(255, 255, 255, 0.06);
-    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.045);
+    border-color: rgba(255, 255, 255, 0.08);
+    border-radius: 12px;
     padding: 10px 12px;
+    transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.scale-details-team-grid .escala-member-item:hover {
+    transform: translateY(-2px);
+    border-color: rgba(99, 102, 241, 0.35);
+    box-shadow: 0 8px 18px rgba(0, 0, 0, 0.16);
 }
 
 .scale-details-setlist-list {
@@ -1675,17 +1690,18 @@ button, input, select, textarea {
 .confirm-badge {
     display: inline-flex;
     align-items: center;
-    gap: 4px;
-    font-size: 0.65rem;
+    gap: 5px;
+    font-size: 0.68rem;
     font-weight: 700;
-    padding: 3px 8px;
-    border-radius: 20px;
+    padding: 5px 9px;
+    border-radius: 999px;
     cursor: pointer;
     border: 1px solid transparent;
     transition: all var(--transition-fast);
     margin-top: 4px;
     text-transform: uppercase;
     letter-spacing: 0.3px;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.1);
 }
 
 .confirm-badge:hover {
@@ -1694,21 +1710,23 @@ button, input, select, textarea {
 }
 
 .confirm-pendente {
-    background-color: rgba(251, 191, 36, 0.12);
+    background-color: rgba(251, 191, 36, 0.14);
     color: #fbbf24;
-    border-color: rgba(251, 191, 36, 0.25);
+    border-color: rgba(251, 191, 36, 0.3);
 }
 
 .confirm-confirmado {
-    background-color: rgba(34, 197, 94, 0.12);
+    background-color: rgba(34, 197, 94, 0.16);
     color: #22c55e;
-    border-color: rgba(34, 197, 94, 0.25);
+    border-color: rgba(34, 197, 94, 0.3);
+    box-shadow: 0 0 0 1px rgba(34, 197, 94, 0.14), 0 6px 14px rgba(34, 197, 94, 0.12);
 }
 
 .confirm-indisponivel {
-    background-color: rgba(239, 68, 68, 0.12);
+    background-color: rgba(239, 68, 68, 0.16);
     color: #ef4444;
-    border-color: rgba(239, 68, 68, 0.25);
+    border-color: rgba(239, 68, 68, 0.3);
+    box-shadow: 0 0 0 1px rgba(239, 68, 68, 0.14), 0 6px 14px rgba(239, 68, 68, 0.12);
 }
 
 /* ==================== TOAST NOTIFICATIONS ==================== */
