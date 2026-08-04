@@ -280,6 +280,25 @@ function registerServiceWorker() {
     if ("serviceWorker" in navigator) {
         navigator.serviceWorker.register("./sw.js").then((registration) => {
             console.log("[PWA] Service Worker registered successfully", registration);
+
+            if (registration.waiting) {
+                registration.waiting.postMessage({ type: "SKIP_WAITING" });
+            }
+
+            registration.addEventListener("updatefound", () => {
+                const installingWorker = registration.installing;
+                if (!installingWorker) return;
+
+                installingWorker.addEventListener("statechange", () => {
+                    if (registration.waiting && navigator.serviceWorker.controller) {
+                        registration.waiting.postMessage({ type: "SKIP_WAITING" });
+                    }
+                });
+            });
+
+            navigator.serviceWorker.addEventListener("controllerchange", () => {
+                window.location.reload();
+            });
         }).catch((error) => {
             console.log("[PWA] Service Worker registration failed:", error);
         });
@@ -1039,6 +1058,46 @@ function showToast(message, type = "success") {
         toast.classList.add("toast-fade-out");
         toast.addEventListener("animationend", () => toast.remove());
     }, 3500);
+}
+
+function requestNotificationPermission() {
+    if (!("Notification" in window)) return Promise.resolve(false);
+
+    if (Notification.permission === "granted") return Promise.resolve(true);
+    if (Notification.permission === "denied") return Promise.resolve(false);
+
+    return Notification.requestPermission().then(permission => permission === "granted");
+}
+
+function showAppNotification(title, body) {
+    if (!("Notification" in window)) {
+        showToast(body, "info");
+        return;
+    }
+
+    if (Notification.permission === "granted") {
+        new Notification(title, {
+            body,
+            icon: "./icon-192.jpg"
+        });
+        return;
+    }
+
+    if (Notification.permission === "default") {
+        requestNotificationPermission().then((granted) => {
+            if (granted) {
+                new Notification(title, {
+                    body,
+                    icon: "./icon-192.jpg"
+                });
+            } else {
+                showToast(body, "info");
+            }
+        });
+        return;
+    }
+
+    showToast(body, "info");
 }
 
 // ==================== DASHBOARD SECTION ====================
@@ -2344,6 +2403,12 @@ async function handleScaleSubmit(e) {
         };
         appState.schedules.push(newScale);
         showToast("Escala criada com sucesso!");
+
+        const formattedDate = new Date(`${scaleData.data}T${scaleData.hora}`).toLocaleDateString("pt-BR");
+        showAppNotification(
+            "Nova escala criada",
+            `${scaleData.tipo} • ${formattedDate} às ${scaleData.hora}h`
+        );
 
     }
 

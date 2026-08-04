@@ -1,6 +1,6 @@
-// Service Worker - AdoraScale (Estratégia Network-First para sincronização imediata no celular)
+// Service Worker - AdoraScale (Estratégia Network-First para atualização imediata no celular)
 
-const CACHE_NAME = 'adorascale-cache-v3';
+const CACHE_NAME = 'adorascale-cache-v4';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
@@ -10,7 +10,6 @@ const ASSETS_TO_CACHE = [
   './icon-192.jpg'
 ];
 
-// Instalação do Cache Offline
 self.addEventListener('install', (event) => {
   self.skipWaiting();
   event.waitUntil(
@@ -18,7 +17,6 @@ self.addEventListener('install', (event) => {
   );
 });
 
-// Ativação e limpeza de caches antigos
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((keys) =>
@@ -29,23 +27,42 @@ self.addEventListener('activate', (event) => {
   );
 });
 
-// Estratégia Network-First: Tenta buscar atualizações da rede primeiro; se offline, usa o cache local.
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'SKIP_WAITING') {
+    self.skipWaiting();
+  }
+});
+
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
+
+  const requestUrl = new URL(event.request.url);
+  const isSameOrigin = requestUrl.origin === self.location.origin;
+
+  if (event.request.mode === 'navigate') {
+    event.respondWith(
+      fetch(event.request)
+        .then((networkResponse) => {
+          if (networkResponse && networkResponse.status === 200 && isSameOrigin) {
+            const responseToCache = networkResponse.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put('./index.html', responseToCache));
+          }
+          return networkResponse;
+        })
+        .catch(() => caches.match('./index.html').then((cached) => cached || caches.match('./')))
+    );
+    return;
+  }
 
   event.respondWith(
     fetch(event.request)
       .then((networkResponse) => {
-        if (networkResponse && networkResponse.status === 200 && event.request.url.startsWith(self.location.origin)) {
+        if (networkResponse && networkResponse.status === 200 && isSameOrigin) {
           const responseToCache = networkResponse.clone();
-          caches.open(CACHE_NAME).then((cache) => {
-            cache.put(event.request, responseToCache);
-          });
+          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, responseToCache));
         }
         return networkResponse;
       })
-      .catch(() => {
-        return caches.match(event.request);
-      })
+      .catch(() => caches.match(event.request))
   );
 });
