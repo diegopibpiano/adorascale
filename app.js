@@ -1143,6 +1143,16 @@ function createTimelineItem(sc) {
     
     const div = document.createElement("div");
     div.className = "timeline-item";
+    div.style.cursor = "pointer";
+    div.setAttribute("role", "button");
+    div.tabIndex = 0;
+    div.addEventListener("click", () => openScaleModal(sc.id));
+    div.addEventListener("keydown", (event) => {
+        if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
+            openScaleModal(sc.id);
+        }
+    });
     
     // Get lead initials or name
     const ministroObj = appState.members.find(m => m.id === sc.ministro);
