@@ -1,6 +1,6 @@
 // Service Worker - AdoraScale (Estratégia Network-First para sincronização imediata no celular)
 
-const CACHE_NAME = 'adorascale-cache-v2';
+const CACHE_NAME = 'adorascale-cache-v3';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
