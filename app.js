@@ -1312,7 +1312,7 @@ function renderSongs() {
                 <td>
                     <div class="link-group">
                         <a href="${song.linkDrive}" target="_blank" class="btn-link-action drive-link" title="Abrir Cifra no Drive">
-                            <img src="icon-192.jpg" alt="Colcheia" class="music-link-icon">
+                            <i data-lucide="file-text"></i>
                         </a>
                         <a href="${song.linkVideo}" target="_blank" class="btn-link-action video-link" title="Ouvir Música">
                             <img src="icon-192.jpg" alt="Colcheia" class="music-link-icon">
@@ -1794,7 +1794,7 @@ function renderScheduleCard(container, sc) {
                             </div>
                             <div class="link-group">
                                 <a href="${song.linkDrive}" target="_blank" class="btn-link-action drive-link" title="Abrir Cifra">
-                                    <img src="icon-192.jpg" alt="Colcheia" class="music-link-icon">
+                                    <i data-lucide="file-text"></i>
                                 </a>
                                 <a href="${song.linkVideo}" target="_blank" class="btn-link-action video-link" title="Ouvir">
                                     <img src="icon-192.jpg" alt="Colcheia" class="music-link-icon">
@@ -2051,8 +2051,8 @@ function renderScaleDetailsContent(sc) {
             if (!song) return;
 
             const driveLink = song.linkDrive
-                ? `<a href="${song.linkDrive}" target="_blank" class="btn-link-action drive-link" title="Abrir cifra"><img src="icon-192.jpg" alt="Colcheia" class="music-link-icon"></a>`
-                : `<span class="btn-link-action" style="opacity:0.4; cursor:not-allowed;" title="Cifra não cadastrada"><img src="icon-192.jpg" alt="Colcheia" class="music-link-icon"></span>`;
+                ? `<a href="${song.linkDrive}" target="_blank" class="btn-link-action drive-link" title="Abrir cifra"><i data-lucide="file-text"></i></a>`
+                : `<span class="btn-link-action" style="opacity:0.4; cursor:not-allowed;" title="Cifra não cadastrada"><i data-lucide="file-text"></i></span>`;
 
             const videoLink = song.linkVideo
                 ? `<a href="${song.linkVideo}" target="_blank" class="btn-link-action video-link" title="Abrir vídeo"><img src="icon-192.jpg" alt="Colcheia" class="music-link-icon"></a>`
