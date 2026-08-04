@@ -1784,22 +1784,29 @@ button, input, select, textarea {
 
 /* ==================== RESPONSIVE DESIGN ==================== */
 @media (max-width: 768px) {
+    body {
+        font-size: 15px;
+    }
+
     .app-container {
         flex-direction: column;
     }
     
     .sidebar {
         width: 100vw;
-        height: 60px;
+        height: 64px;
         position: fixed;
         bottom: 0;
         top: auto;
         left: 0;
         border-right: none;
-        border-top: 1px solid var(--border-color);
+        border-top: 1px solid rgba(255,255,255,0.06);
         flex-direction: row;
         justify-content: space-around;
         padding: 0;
+        background: rgba(17, 24, 39, 0.96);
+        backdrop-filter: blur(16px);
+        -webkit-backdrop-filter: blur(16px);
     }
     
     .sidebar-header, .sidebar-footer {
@@ -1809,7 +1816,7 @@ button, input, select, textarea {
     .sidebar-nav {
         flex-direction: row;
         width: 100%;
-        padding: 0;
+        padding: 0 8px;
         justify-content: space-around;
         gap: 0;
     }
@@ -1818,42 +1825,93 @@ button, input, select, textarea {
         flex-direction: column;
         align-items: center;
         justify-content: center;
-        padding: 8px 0;
-        font-size: 0.7rem;
+        padding: 8px 6px;
+        font-size: 0.68rem;
         flex-grow: 1;
         border-left: none;
-        border-radius: 0;
-        gap: 4px;
+        border-radius: 10px;
+        gap: 3px;
         text-align: center;
+        min-height: 48px;
     }
     
     .nav-item.active {
         border-left: none;
-        border-top: 3px solid var(--primary);
-        background: none;
-        padding-left: 0;
-        padding-top: 5px;
+        border-top: none;
+        background: rgba(99, 102, 241, 0.16);
+        padding-left: 6px;
+        padding-top: 8px;
     }
     
     .main-content {
         margin-left: 0;
-        padding: 20px 20px 80px 20px; /* space for bottom navbar */
+        padding: 16px 14px 88px 14px;
     }
     
     .top-bar {
-        margin-bottom: 20px;
+        margin-bottom: 16px;
+        height: auto;
+        padding-bottom: 8px;
+    }
+
+    .page-title h1 {
+        font-size: 1.25rem;
+    }
+
+    .page-title p {
+        font-size: 0.78rem;
     }
     
     .dashboard-grid {
         grid-template-columns: 1fr;
+        gap: 16px;
+    }
+    
+    .grid-card {
+        border-radius: 14px;
+    }
+
+    .card-header {
+        padding: 14px 16px;
+    }
+
+    .card-body {
+        padding: 16px;
     }
     
     .col-span-2 {
         grid-column: span 1;
     }
     
+    .modal-overlay {
+        padding: 10px;
+    }
+
     .modal-content {
-        max-height: 85vh;
+        max-height: 88vh;
+        border-radius: 14px;
+    }
+
+    .modal-header,
+    .modal-body,
+    .modal-footer {
+        padding-left: 16px;
+        padding-right: 16px;
+    }
+
+    .modal-header {
+        padding-top: 16px;
+        padding-bottom: 14px;
+    }
+
+    .modal-body {
+        padding-top: 16px;
+        padding-bottom: 16px;
+    }
+
+    .modal-footer {
+        padding-top: 12px;
+        padding-bottom: 14px;
     }
     
     .form-row {
@@ -1865,6 +1923,51 @@ button, input, select, textarea {
         width: 100%;
     }
 
+    .timeline-item {
+        padding: 12px 14px;
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .timeline-info {
+        width: 100%;
+        gap: 12px;
+    }
+
+    .timeline-members-summary {
+        margin-left: 0;
+    }
+
+    .escala-body {
+        grid-template-columns: 1fr;
+        gap: 16px;
+    }
+
+    .escala-team-grid,
+    .scale-details-team-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .escala-member-item,
+    .scale-details-team-grid .escala-member-item,
+    .escala-song-item,
+    .scale-details-setlist-list .escala-song-item {
+        padding: 10px 12px;
+    }
+
+    .escala-song-item,
+    .scale-details-setlist-list .escala-song-item {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
+    }
+
+    .link-group {
+        width: 100%;
+        justify-content: flex-start;
+    }
+
     .data-table {
         min-width: 680px;
     }
@@ -1873,6 +1976,20 @@ button, input, select, textarea {
     .data-table td {
         padding: 12px 14px;
         white-space: nowrap;
+    }
+
+    .scale-details-hero {
+        padding: 16px;
+    }
+
+    .scale-details-title-row {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .scale-details-meta {
+        gap: 8px;
+        font-size: 0.78rem;
     }
 }
 
