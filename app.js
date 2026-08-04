@@ -23,6 +23,33 @@ let appState = {
     currentRole: "usuario"
 };
 
+let pendingCloudWrites = new Set();
+
+function generateUniqueId(prefix = "id") {
+    const cryptoRef = (typeof window !== "undefined" && window.crypto) || (typeof globalThis !== "undefined" && globalThis.crypto);
+
+    const makeId = () => {
+        if (cryptoRef && typeof cryptoRef.randomUUID === "function") {
+            return `${prefix}_${cryptoRef.randomUUID()}`;
+        }
+        return `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+    };
+
+    let candidate = makeId();
+    const existingIds = new Set([
+        ...(Array.isArray(appState.songs) ? appState.songs.map(item => item && item.id).filter(Boolean) : []),
+        ...(Array.isArray(appState.members) ? appState.members.map(item => item && item.id).filter(Boolean) : []),
+        ...(Array.isArray(appState.schedules) ? appState.schedules.map(item => item && item.id).filter(Boolean) : []),
+        ...(Array.isArray(appState.users) ? appState.users.map(item => item && item.id).filter(Boolean) : [])
+    ]);
+
+    while (existingIds.has(candidate)) {
+        candidate = makeId();
+    }
+
+    return candidate;
+}
+
 function buildDefaultUsers() {
     const users = [{
         id: "u_admin",
@@ -230,6 +257,35 @@ function initAuth() {
     }
 }
 
+function mergeCollectionWithCloud(coll, cloudItems) {
+    const currentItems = Array.isArray(appState[coll]) ? appState[coll] : [];
+    const itemMap = new Map();
+
+    currentItems.filter(item => item && item.id).forEach(item => {
+        itemMap.set(String(item.id), item);
+    });
+
+    cloudItems.filter(item => item && item.id).forEach(item => {
+        if (!itemMap.has(String(item.id))) {
+            itemMap.set(String(item.id), item);
+        }
+    });
+
+    const mergedItems = Array.from(itemMap.values());
+    appState[coll] = mergedItems;
+    localStorage.setItem(`adorascale_${coll}`, JSON.stringify(appState[coll]));
+
+    if (coll === 'songs' && Array.isArray(appState.songs)) {
+        appState.songs.sort((a, b) => (a.titulo || '').localeCompare(b.titulo || ''));
+    }
+    if (coll === 'members' && Array.isArray(appState.members)) {
+        appState.members.sort((a, b) => (a.nome || '').localeCompare(b.nome || ''));
+    }
+    if (coll === 'schedules' && Array.isArray(appState.schedules)) {
+        appState.schedules.sort((a, b) => new Date(`${a.data}T${a.hora}`) - new Date(`${b.data}T${b.hora}`));
+    }
+}
+
 function setupRealtimeSync() {
     if (typeof db === 'undefined' || !db) return;
 
@@ -237,6 +293,10 @@ function setupRealtimeSync() {
     collections.forEach(coll => {
         try {
             db.collection(coll).onSnapshot(snapshot => {
+                if (pendingCloudWrites.has(coll)) {
+                    return;
+                }
+
                 const cloudData = [];
                 snapshot.forEach(doc => {
                     const data = doc.data();
@@ -251,20 +311,7 @@ function setupRealtimeSync() {
                     return normalized;
                 });
 
-                appState[coll] = normalizedItems;
-                localStorage.setItem(`adorascale_${coll}`, JSON.stringify(appState[coll]));
-
-                // Sort
-                if (coll === 'songs' && Array.isArray(appState.songs)) {
-                    appState.songs.sort((a, b) => (a.titulo || '').localeCompare(b.titulo || ''));
-                }
-                if (coll === 'members' && Array.isArray(appState.members)) {
-                    appState.members.sort((a, b) => (a.nome || '').localeCompare(b.nome || ''));
-                }
-                if (coll === 'schedules' && Array.isArray(appState.schedules)) {
-                    appState.schedules.sort((a, b) => new Date(`${a.data}T${a.hora}`) - new Date(`${b.data}T${b.hora}`));
-                }
-
+                mergeCollectionWithCloud(coll, normalizedItems);
                 renderAll();
             }, err => {
                 console.warn(`Aviso de escuta em tempo real para ${coll}:`, err);
@@ -534,11 +581,10 @@ async function saveCollection(collectionName, dataArray) {
     const items = Array.isArray(dataArray) ? dataArray : [];
 
     try {
-        const promises = items.map(item => {
-            if (!item || !item.id) return Promise.resolve();
-            return db.collection(collectionName).doc(String(item.id)).set({ ...item }, { merge: true });
-        });
-        await Promise.all(promises);
+        for (const item of items) {
+            if (!item || !item.id) continue;
+            await db.collection(collectionName).doc(String(item.id)).set({ ...item }, { merge: true });
+        }
         console.log(`[Firestore] ${collectionName} sincronizado na nuvem com sucesso (${items.length} itens).`);
     } catch (err) {
         console.warn(`[Firestore Error] Falha ao sincronizar ${collectionName}:`, err);
@@ -562,6 +608,9 @@ async function saveappState() {
   appState.schedules = appState.schedules || [];
   appState.users = appState.users || [];
 
+  const collectionsToPersist = ["songs", "members", "schedules", "users"];
+  collectionsToPersist.forEach(coll => pendingCloudWrites.add(coll));
+
   try {
     localStorage.setItem("adorascale_songs", JSON.stringify(appState.songs));
     localStorage.setItem("adorascale_members", JSON.stringify(appState.members));
@@ -571,12 +620,16 @@ async function saveappState() {
     console.warn("Erro ao salvar no LocalStorage:", err);
   }
 
-  await Promise.all([
-    saveCollection("songs", appState.songs),
-    saveCollection("members", appState.members),
-    saveCollection("schedules", appState.schedules),
-    saveCollection("users", appState.users)
-  ]);
+  try {
+    await Promise.all([
+      saveCollection("songs", appState.songs),
+      saveCollection("members", appState.members),
+      saveCollection("schedules", appState.schedules),
+      saveCollection("users", appState.users)
+    ]);
+  } finally {
+    collectionsToPersist.forEach(coll => pendingCloudWrites.delete(coll));
+  }
 }
 
 // Carrega o estado da aplicação do LocalStorage e mescla com Firestore
@@ -614,13 +667,7 @@ async function loadappState() {
           const cloudData = [];
           snapshot.forEach(doc => cloudData.push(doc.data()));
 
-          // Union/Merge de itens por ID (preserva adições locais e nuvem)
-          const itemMap = new Map();
-          (appState[coll] || []).forEach(item => { if (item && item.id) itemMap.set(String(item.id), item); });
-          cloudData.forEach(item => { if (item && item.id) itemMap.set(String(item.id), item); });
-
-          appState[coll] = Array.from(itemMap.values());
-          localStorage.setItem(`adorascale_${coll}`, JSON.stringify(appState[coll]));
+          mergeCollectionWithCloud(coll, cloudData);
         }
       }
     } catch (error) {
@@ -979,7 +1026,7 @@ async function handleAccessSubmit(e) {
         }
     } else {
         appState.users.push({
-            id: `u_${Date.now()}`,
+            id: generateUniqueId("u"),
             nome,
             username,
             password,
@@ -1392,7 +1439,7 @@ async function handleSongSubmit(e) {
     } else {
         // Create mode
         const newSong = {
-            id: 's_' + Date.now(),
+            id: generateUniqueId("s"),
             ...songData
         };
         appState.songs.push(newSong);
@@ -1565,7 +1612,7 @@ async function handleMemberSubmit(e) {
         }
     } else {
         const newMember = {
-            id: 'm_' + Date.now(),
+            id: generateUniqueId("m"),
             ...memberData
         };
         appState.members.push(newMember);
@@ -2397,7 +2444,7 @@ async function handleScaleSubmit(e) {
             }
         });
         const newScale = {
-            id: 'sc_' + Date.now(),
+            id: generateUniqueId("sc"),
             ...scaleData,
             confirmacoes
         };
