@@ -1686,6 +1686,20 @@ button, input, select, textarea {
     }
 }
 
+.music-link-icon {
+    width: 18px;
+    height: 18px;
+    object-fit: contain;
+    border-radius: 4px;
+    display: block;
+}
+
+.btn-link-action {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
 /* ==================== CONFIRMATION BADGES ==================== */
 .confirm-badge {
     display: inline-flex;

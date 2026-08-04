@@ -1312,10 +1312,10 @@ function renderSongs() {
                 <td>
                     <div class="link-group">
                         <a href="${song.linkDrive}" target="_blank" class="btn-link-action drive-link" title="Abrir Cifra no Drive">
-                            <i data-lucide="file-text"></i>
+                            <img src="icon-192.jpg" alt="Colcheia" class="music-link-icon">
                         </a>
                         <a href="${song.linkVideo}" target="_blank" class="btn-link-action video-link" title="Ouvir Música">
-                            <i data-lucide="youtube"></i>
+                            <img src="icon-192.jpg" alt="Colcheia" class="music-link-icon">
                         </a>
                     </div>
                 </td>
@@ -1794,10 +1794,10 @@ function renderScheduleCard(container, sc) {
                             </div>
                             <div class="link-group">
                                 <a href="${song.linkDrive}" target="_blank" class="btn-link-action drive-link" title="Abrir Cifra">
-                                    <i data-lucide="file-text"></i>
+                                    <img src="icon-192.jpg" alt="Colcheia" class="music-link-icon">
                                 </a>
                                 <a href="${song.linkVideo}" target="_blank" class="btn-link-action video-link" title="Ouvir">
-                                    <i data-lucide="youtube"></i>
+                                    <img src="icon-192.jpg" alt="Colcheia" class="music-link-icon">
                                 </a>
                             </div>
                         </div>
@@ -2051,12 +2051,12 @@ function renderScaleDetailsContent(sc) {
             if (!song) return;
 
             const driveLink = song.linkDrive
-                ? `<a href="${song.linkDrive}" target="_blank" class="btn-link-action drive-link" title="Abrir cifra"><i data-lucide="file-text"></i></a>`
-                : `<span class="btn-link-action" style="opacity:0.4; cursor:not-allowed;" title="Cifra não cadastrada"><i data-lucide="file-text"></i></span>`;
+                ? `<a href="${song.linkDrive}" target="_blank" class="btn-link-action drive-link" title="Abrir cifra"><img src="icon-192.jpg" alt="Colcheia" class="music-link-icon"></a>`
+                : `<span class="btn-link-action" style="opacity:0.4; cursor:not-allowed;" title="Cifra não cadastrada"><img src="icon-192.jpg" alt="Colcheia" class="music-link-icon"></span>`;
 
             const videoLink = song.linkVideo
-                ? `<a href="${song.linkVideo}" target="_blank" class="btn-link-action video-link" title="Abrir vídeo"><i data-lucide="youtube"></i></a>`
-                : `<span class="btn-link-action" style="opacity:0.4; cursor:not-allowed;" title="Vídeo não cadastrado"><i data-lucide="youtube"></i></span>`;
+                ? `<a href="${song.linkVideo}" target="_blank" class="btn-link-action video-link" title="Abrir vídeo"><img src="icon-192.jpg" alt="Colcheia" class="music-link-icon"></a>`
+                : `<span class="btn-link-action" style="opacity:0.4; cursor:not-allowed;" title="Vídeo não cadastrado"><img src="icon-192.jpg" alt="Colcheia" class="music-link-icon"></span>`;
 
             setlistHtml += `
                 <div class="escala-song-item">
