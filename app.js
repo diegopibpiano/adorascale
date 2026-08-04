@@ -367,6 +367,73 @@ function getCurrentUserMemberId() {
     return appState.currentUser && appState.currentUser.memberId ? appState.currentUser.memberId : null;
 }
 
+function normalizeLoginValue(value) {
+    return String(value || "").trim().toLowerCase();
+}
+
+function findMatchingLocalUser(username, password) {
+    const normalizedUsername = normalizeLoginValue(username);
+    const normalizedPassword = String(password || "").trim();
+
+    return (appState.users || []).find(user => {
+        const storedUsername = normalizeLoginValue(user.username || user.id || "");
+        const storedPassword = String(user.password || "").trim();
+        return (storedUsername === normalizedUsername || normalizeLoginValue(user.id) === normalizedUsername) && storedPassword === normalizedPassword;
+    }) || null;
+}
+
+async function findMatchingFirestoreUser(username, password) {
+    if (typeof db === 'undefined' || !db) return null;
+
+    const normalizedUsername = normalizeLoginValue(username);
+    const normalizedPassword = String(password || "").trim();
+
+    try {
+        const snapshot = await db.collection("users").get();
+        if (snapshot.empty) return null;
+
+        const cloudUsers = snapshot.docs.map(doc => ({
+            id: doc.id,
+            ...(doc.data() || {})
+        }));
+
+        const matched = cloudUsers.find(user => {
+            const storedUsername = normalizeLoginValue(user.username || user.id || "");
+            const storedPassword = String(user.password || "").trim();
+            return (storedUsername === normalizedUsername || normalizeLoginValue(user.id) === normalizedUsername) && storedPassword === normalizedPassword;
+        });
+
+        if (matched) {
+            const existingIndex = (appState.users || []).findIndex(item => String(item.id) === String(matched.id));
+            if (existingIndex !== -1) {
+                appState.users[existingIndex] = { ...appState.users[existingIndex], ...matched };
+            } else {
+                appState.users.push(matched);
+            }
+            try {
+                localStorage.setItem("adorascale_users", JSON.stringify(appState.users));
+            } catch (err) {
+                console.warn("Erro ao salvar usuários no LocalStorage após login Firestore:", err);
+            }
+        }
+
+        return matched || null;
+    } catch (error) {
+        console.warn("Erro ao buscar usuário no Firestore:", error);
+        return null;
+    }
+}
+
+async function authenticateUser(username, password) {
+    const localMatch = findMatchingLocalUser(username, password);
+    if (localMatch) return localMatch;
+
+    const firestoreMatch = await findMatchingFirestoreUser(username, password);
+    if (firestoreMatch) return firestoreMatch;
+
+    return null;
+}
+
 function toggleLoginappState() {
     if (appState.currentUser) {
         appState.currentUser = null;
@@ -385,8 +452,8 @@ function toggleLoginappState() {
     }
 }
 
-// Handle login (checks local users first, then Firebase Auth as fallback)
-function handleLoginSubmit(e) {
+// Handle login (checks Firestore first, then local users, then Firebase Auth fallback)
+async function handleLoginSubmit(e) {
   e.preventDefault();
   const usernameInput = document.getElementById('login-username');
   const passwordInput = document.getElementById('login-senha');
@@ -398,17 +465,13 @@ function handleLoginSubmit(e) {
     return;
   }
 
-  // 1. Local credentials check (e.g. admin / adoracao123, user1 / senha123, etc.)
-  const matched = (appState.users || []).find(u => 
-    (u.username.toLowerCase() === username.toLowerCase() || u.id.toLowerCase() === username.toLowerCase()) && 
-    u.password === password
-  );
+  const matched = await authenticateUser(username, password);
 
   if (matched) {
     appState.currentUser = matched;
-    appState.currentRole = matched.role;
+    appState.currentRole = matched.role || 'usuario';
     sessionStorage.setItem('adorascale_currentUser', JSON.stringify(matched));
-    sessionStorage.setItem('adorascale_role', matched.role);
+    sessionStorage.setItem('adorascale_role', appState.currentRole);
     updateRoleUI();
     showToast(`Bem-vindo(a), ${matched.nome}!`, 'success');
     const modal = document.getElementById('modal-login');
@@ -416,30 +479,28 @@ function handleLoginSubmit(e) {
     return;
   }
 
-  // 2. Firebase Auth fallback
   if (typeof auth !== 'undefined' && auth.signInWithEmailAndPassword) {
-    auth.signInWithEmailAndPassword(username, password)
-      .then((userCredential) => {
-        const user = userCredential.user;
-        const matchedFb = (appState.users || []).find(u => u.username.toLowerCase() === username.toLowerCase()) || {
-          id: user.uid,
-          username: username,
-          nome: user.displayName || username,
-          role: "administrador"
-        };
-        appState.currentUser = matchedFb;
-        appState.currentRole = matchedFb.role;
-        sessionStorage.setItem('adorascale_currentUser', JSON.stringify(matchedFb));
-        sessionStorage.setItem('adorascale_role', matchedFb.role);
-        updateRoleUI();
-        showToast(`Bem-vindo(a), ${matchedFb.nome}!`, 'success');
-        const modal = document.getElementById('modal-login');
-        if (modal) modal.classList.remove('active');
-      })
-      .catch((error) => {
-        console.error('Login error:', error);
-        showToast('Login ou senha incorretos!', 'danger');
-      });
+    try {
+      const userCredential = await auth.signInWithEmailAndPassword(username, password);
+      const user = userCredential.user;
+      const matchedFb = (appState.users || []).find(u => normalizeLoginValue(u.username) === normalizeLoginValue(username)) || {
+        id: user.uid,
+        username: username,
+        nome: user.displayName || username,
+        role: "administrador"
+      };
+      appState.currentUser = matchedFb;
+      appState.currentRole = matchedFb.role || 'administrador';
+      sessionStorage.setItem('adorascale_currentUser', JSON.stringify(matchedFb));
+      sessionStorage.setItem('adorascale_role', appState.currentRole);
+      updateRoleUI();
+      showToast(`Bem-vindo(a), ${matchedFb.nome}!`, 'success');
+      const modal = document.getElementById('modal-login');
+      if (modal) modal.classList.remove('active');
+    } catch (error) {
+      console.error('Login error:', error);
+      showToast('Login ou senha incorretos!', 'danger');
+    }
   } else {
     showToast('Login ou senha incorretos!', 'danger');
   }
@@ -865,8 +926,8 @@ function handleAccessSubmit(e) {
 
     const id = document.getElementById("acesso-id").value;
     const nome = document.getElementById("acesso-nome").value.trim();
-    const username = document.getElementById("acesso-usuario").value.trim().toLowerCase();
-    const password = document.getElementById("acesso-senha").value;
+    const username = normalizeLoginValue(document.getElementById("acesso-usuario").value);
+    const password = document.getElementById("acesso-senha").value.trim();
     const role = document.getElementById("acesso-role").value;
     const telefone = document.getElementById("acesso-telefone").value.trim();
     const memberId = document.getElementById("acesso-membro").value;
@@ -876,7 +937,7 @@ function handleAccessSubmit(e) {
         return;
     }
 
-    const duplicateUser = appState.users.find(item => item.username.toLowerCase() === username && item.id !== id);
+    const duplicateUser = appState.users.find(item => normalizeLoginValue(item.username) === username && item.id !== id);
     if (duplicateUser) {
         showToast("Esse nome de usuário já existe.", "danger");
         return;
