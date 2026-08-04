@@ -700,6 +700,12 @@ function setupEventListeners() {
         });
     });
 
+    document.querySelectorAll(".modal-overlay").forEach(modal => {
+        modal.addEventListener("click", (e) => {
+            if (e.target === modal) modal.classList.remove("active");
+        });
+    });
+
     // Song triggers
     bind("btn-nova-musica", "click", () => openSongModal());
     bind("form-musica", "submit", handleSongSubmit);
@@ -1146,11 +1152,11 @@ function createTimelineItem(sc) {
     div.style.cursor = "pointer";
     div.setAttribute("role", "button");
     div.tabIndex = 0;
-    div.addEventListener("click", () => openScaleModal(sc.id));
+    div.addEventListener("click", () => openScaleDetailsModal(sc.id));
     div.addEventListener("keydown", (event) => {
         if (event.key === "Enter" || event.key === " ") {
             event.preventDefault();
-            openScaleModal(sc.id);
+            openScaleDetailsModal(sc.id);
         }
     });
     
@@ -1891,6 +1897,178 @@ function openScaleModal(scaleId = "") {
     modal.classList.add("active");
 }
 
+// ==================== SCALE DETAILS MODAL ====================
+function openScaleDetailsModal(scaleId = "") {
+    const modal = document.getElementById("modal-escala-detalhes");
+    const body = document.getElementById("modal-escala-detalhes-body");
+    const hiddenId = document.getElementById("modal-escala-detalhes-scale-id");
+
+    if (!modal || !body || !hiddenId) return;
+
+    const sc = appState.schedules.find(s => s.id === scaleId);
+    if (!sc) return;
+
+    hiddenId.value = sc.id;
+    document.getElementById("modal-escala-detalhes-title").textContent = `Detalhes da Escala • ${sc.tipo}`;
+    body.innerHTML = renderScaleDetailsContent(sc);
+    modal.classList.add("active");
+    initLucide();
+}
+
+function refreshScaleDetailsModal() {
+    const modal = document.getElementById("modal-escala-detalhes");
+    const hiddenId = document.getElementById("modal-escala-detalhes-scale-id");
+    if (!modal || !modal.classList.contains("active") || !hiddenId) return;
+    openScaleDetailsModal(hiddenId.value);
+}
+
+function renderScaleDetailsContent(sc) {
+    const dateObj = new Date(`${sc.data}T${sc.hora}`);
+    const weekday = dateObj.toLocaleDateString('pt-BR', { weekday: 'long' });
+    const day = dateObj.getDate().toString().padStart(2, '0');
+    const month = dateObj.toLocaleDateString('pt-BR', { month: 'short' }).replace('.', '');
+
+    const roles = [
+        { label: "Ministro(a)", id: sc.ministro },
+        { label: "Teclado", id: sc.teclado },
+        { label: "Violão", id: sc.violao },
+        { label: "Guitarra", id: sc.guitarra },
+        { label: "Contra-baixo", id: sc.baixo },
+        { label: "Bateria", id: sc.bateria },
+        { label: "Percussão", id: sc.percussao },
+        { label: "Vocal 1", id: sc.vocal1 },
+        { label: "Vocal 2", id: sc.vocal2 },
+        { label: "Vocal 3", id: sc.vocal3 },
+        { label: "Som", id: sc.som },
+        { label: "Mídia/Projeção", id: sc.midia },
+        { label: "Transmissão", id: sc.transmissao },
+    ];
+
+    let teamHtml = "";
+    if (!sc.confirmacoes) sc.confirmacoes = {};
+
+    roles.forEach(role => {
+        const member = role.id ? appState.members.find(m => m.id === role.id) : null;
+        if (!member) return;
+
+        const status = sc.confirmacoes[member.id] || "pendente";
+        const statusConfig = {
+            pendente: { icon: "clock", label: "Pendente", cssClass: "confirm-pendente" },
+            confirmado: { icon: "check-circle", label: "Confirmado", cssClass: "confirm-confirmado" },
+            indisponivel: { icon: "x-circle", label: "Indisponível", cssClass: "confirm-indisponivel" }
+        };
+        const cfg = statusConfig[status];
+        const currentMemberId = getCurrentUserMemberId();
+        const isAdmin = appState.currentRole === "administrador";
+        const isOwnMember = !!(currentMemberId && currentMemberId === member.id);
+        const canManageThis = isOwnMember || isAdmin;
+        const clickHandler = canManageThis
+            ? `onclick="toggleConfirmation('${sc.id}', '${member.id}'); event.stopPropagation();"`
+            : "";
+        const titleText = canManageThis
+            ? (isAdmin ? `${cfg.label} — Clique para alterar (Adm)` : `${cfg.label} — Clique para alterar`)
+            : `${cfg.label} — Você só pode confirmar a própria presença`;
+
+        teamHtml += `
+            <div class="escala-member-item">
+                <div style="display: flex; justify-content: space-between; align-items: flex-start; width: 100%;">
+                    <span class="member-role">${role.label}</span>
+                </div>
+                <span class="member-name">${member.nome}</span>
+                <button class="confirm-badge ${cfg.cssClass}" ${canManageThis ? clickHandler : "disabled style=\"cursor:not-allowed; opacity:0.7;\""} title="${titleText}">
+                    <i data-lucide="${cfg.icon}" style="width:12px; height:12px;"></i>
+                    <span>${cfg.label}</span>
+                </button>
+            </div>
+        `;
+    });
+
+    let setlistHtml = "";
+    if (!sc.setlist || sc.setlist.length === 0) {
+        setlistHtml = `<p class="text-secondary" style="font-style: italic; font-size: 0.85rem;">Nenhuma música na setlist.</p>`;
+    } else {
+        sc.setlist.forEach((songId, index) => {
+            const song = appState.songs.find(s => s.id === songId);
+            if (!song) return;
+
+            const driveLink = song.linkDrive
+                ? `<a href="${song.linkDrive}" target="_blank" class="btn-link-action drive-link" title="Abrir cifra"><i data-lucide="file-text"></i></a>`
+                : `<span class="btn-link-action" style="opacity:0.4; cursor:not-allowed;" title="Cifra não cadastrada"><i data-lucide="file-text"></i></span>`;
+
+            const videoLink = song.linkVideo
+                ? `<a href="${song.linkVideo}" target="_blank" class="btn-link-action video-link" title="Abrir vídeo"><i data-lucide="youtube"></i></a>`
+                : `<span class="btn-link-action" style="opacity:0.4; cursor:not-allowed;" title="Vídeo não cadastrado"><i data-lucide="youtube"></i></span>`;
+
+            setlistHtml += `
+                <div class="escala-song-item">
+                    <div class="escala-song-info">
+                        <span class="escala-song-title">${index + 1}. ${song.titulo}<span class="escala-song-tom">${song.tom}</span></span>
+                        <span class="escala-song-artist">${song.artista}</span>
+                    </div>
+                    <div class="link-group">
+                        ${driveLink}
+                        ${videoLink}
+                    </div>
+                </div>
+            `;
+        });
+    }
+
+    return `
+        <div class="scale-details-shell">
+            <div class="scale-details-hero">
+                <div class="scale-details-date-pill">
+                    <span class="scale-details-day">${day}</span>
+                    <span class="scale-details-month">${month}</span>
+                </div>
+                <div class="scale-details-summary">
+                    <div class="scale-details-title-row">
+                        <h3>${sc.tipo}</h3>
+                        <span class="scale-details-badge">Painel de culto</span>
+                    </div>
+                    <div class="scale-details-meta">
+                        <span><i data-lucide="calendar"></i> ${capitalizeFirstLetter(weekday)}</span>
+                        <span><i data-lucide="clock"></i> ${sc.hora}h</span>
+                        ${sc.obs ? `<span><i data-lucide="info"></i> ${sc.obs}</span>` : ''}
+                    </div>
+                </div>
+            </div>
+
+            ${sc.tema || sc.versiculos ? `
+            <div class="scale-details-highlight">
+                ${sc.tema ? `<div><strong>📖 Tema:</strong> ${sc.tema}</div>` : ''}
+                ${sc.versiculos ? `<div><strong>✝️ Versículos:</strong> ${sc.versiculos}</div>` : ''}
+            </div>` : ''}
+
+            <div class="scale-details-grid">
+                <div class="scale-details-card">
+                    <div class="scale-details-card-header">
+                        <div>
+                            <h4>Equipe Escalada</h4>
+                            <p>Atualize a presença de cada integrante</p>
+                        </div>
+                    </div>
+                    <div class="scale-details-team-grid">
+                        ${teamHtml || '<p class="text-secondary">Nenhum integrante escalado.</p>'}
+                    </div>
+                </div>
+
+                <div class="scale-details-card">
+                    <div class="scale-details-card-header">
+                        <div>
+                            <h4>Setlist do Culto</h4>
+                            <p>Músicas e links rápidos para a reunião</p>
+                        </div>
+                    </div>
+                    <div class="scale-details-setlist-list">
+                        ${setlistHtml}
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
 // ==================== CONFIRMATION TOGGLE ====================
 function getRoleKeyForMember(sc, memberId) {
     const positions = ["ministro", "teclado", "violao", "guitarra", "baixo", "bateria", "percussao", "vocal1", "vocal2", "vocal3", "som", "midia", "transmissao"];
@@ -1976,6 +2154,7 @@ function toggleConfirmation(scaleId, memberId) {
     saveappState();
     renderSchedules();
     renderDashboard();
+    refreshScaleDetailsModal();
 
     const labels = { pendente: "Pendente", confirmado: "Confirmado", indisponivel: "Indisponível" };
     showToast(`Status alterado para: ${labels[cycle[nextIndex]]}`, "info");
