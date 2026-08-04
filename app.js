@@ -514,7 +514,7 @@ async function saveCollection(collectionName, dataArray) {
     try {
         const promises = items.map(item => {
             if (!item || !item.id) return Promise.resolve();
-            return db.collection(collectionName).doc(String(item.id)).set(item, { merge: true });
+            return db.collection(collectionName).doc(String(item.id)).set({ ...item }, { merge: true });
         });
         await Promise.all(promises);
         console.log(`[Firestore] ${collectionName} sincronizado na nuvem com sucesso (${items.length} itens).`);
@@ -540,7 +540,6 @@ async function saveappState() {
   appState.schedules = appState.schedules || [];
   appState.users = appState.users || [];
 
-  // 1. Salva imediatamente no LocalStorage
   try {
     localStorage.setItem("adorascale_songs", JSON.stringify(appState.songs));
     localStorage.setItem("adorascale_members", JSON.stringify(appState.members));
@@ -550,11 +549,12 @@ async function saveappState() {
     console.warn("Erro ao salvar no LocalStorage:", err);
   }
 
-  // 2. Sincroniza em segundo plano no Firestore
-  saveCollection("songs", appState.songs);
-  saveCollection("members", appState.members);
-  saveCollection("schedules", appState.schedules);
-  saveCollection("users", appState.users);
+  await Promise.all([
+    saveCollection("songs", appState.songs),
+    saveCollection("members", appState.members),
+    saveCollection("schedules", appState.schedules),
+    saveCollection("users", appState.users)
+  ]);
 }
 
 // Carrega o estado da aplicação do LocalStorage e mescla com Firestore
@@ -921,7 +921,7 @@ function editAccessUser(userId) {
     document.getElementById("acesso-nome").focus();
 }
 
-function handleAccessSubmit(e) {
+async function handleAccessSubmit(e) {
     e.preventDefault();
 
     const id = document.getElementById("acesso-id").value;
@@ -962,7 +962,7 @@ function handleAccessSubmit(e) {
         showToast("Novo acesso cadastrado com sucesso.", "success");
     }
 
-    saveappState();
+    await saveappState();
     renderSettings();
     resetAccessForm();
 
@@ -973,7 +973,7 @@ function handleAccessSubmit(e) {
     }
 }
 
-function deleteAccessUser(userId) {
+async function deleteAccessUser(userId) {
     // Only admin can delete accesses
     if (appState.currentRole !== "administrador") {
         showToast("Apenas administradores podem remover acessos.", "danger");
@@ -1290,7 +1290,7 @@ function openSongModal(songId = "") {
     modal.classList.add("active");
 }
 
-function handleSongSubmit(e) {
+async function handleSongSubmit(e) {
     e.preventDefault();
 
     const id = document.getElementById("musica-id").value;
@@ -1321,7 +1321,7 @@ function handleSongSubmit(e) {
         showToast("Música adicionada ao repertório!");
     }
 
-    saveappState();
+    await saveappState();
     sortappStateData();
     document.getElementById("modal-musica").classList.remove("active");
     renderSongs();
@@ -1330,7 +1330,7 @@ function handleSongSubmit(e) {
 
 
 
-function deleteSong(songId) {
+async function deleteSong(songId) {
     const song = appState.songs.find(s => s.id === songId);
     if (!song) return;
 
@@ -1350,9 +1350,9 @@ function deleteSong(songId) {
 
         // Remove from appState songs
         appState.songs = appState.songs.filter(s => s.id !== songId);
-        deleteFromCollection("songs", songId);
+        await deleteFromCollection("songs", songId);
         
-        saveappState();
+        await saveappState();
         showToast("Música excluída com sucesso.", "info");
         renderSongs();
         renderDashboard();
@@ -1459,7 +1459,7 @@ function openMemberModal(memberId = "") {
     modal.classList.add("active");
 }
 
-function handleMemberSubmit(e) {
+async function handleMemberSubmit(e) {
     e.preventDefault();
 
     const id = document.getElementById("membro-id").value;
@@ -1494,14 +1494,14 @@ function handleMemberSubmit(e) {
         showToast("Novo integrante cadastrado!");
     }
 
-    saveappState();
+    await saveappState();
     sortappStateData();
     document.getElementById("modal-membro").classList.remove("active");
     renderMembers();
     renderDashboard();
 }
 
-function deleteMember(memberId) {
+async function deleteMember(memberId) {
     const member = appState.members.find(m => m.id === memberId);
     if (!member) return;
 
@@ -1529,9 +1529,9 @@ function deleteMember(memberId) {
 
         // Remove member
         appState.members = appState.members.filter(m => m.id !== memberId);
-        deleteFromCollection("members", memberId);
+        await deleteFromCollection("members", memberId);
         
-        saveappState();
+        await saveappState();
         showToast("Integrante removido.", "info");
         renderMembers();
         renderDashboard();
@@ -2099,7 +2099,7 @@ function moveSongInSetlist(index, direction) {
     renderSetlistBuilderSelected();
 }
 
-function handleScaleSubmit(e) {
+async function handleScaleSubmit(e) {
     e.preventDefault();
 
     const id = document.getElementById("escala-id").value;
@@ -2155,7 +2155,7 @@ function handleScaleSubmit(e) {
 
     }
 
-    saveappState();
+    await saveappState();
     sortappStateData();
     document.getElementById("modal-escala").classList.remove("active");
     renderSchedules();
@@ -2164,11 +2164,11 @@ function handleScaleSubmit(e) {
 
 
 
-function deleteScale(scaleId) {
+async function deleteScale(scaleId) {
     if (confirm("Deseja realmente excluir esta escala de culto?")) {
-        deleteFromCollection("schedules", scaleId);
+        await deleteFromCollection("schedules", scaleId);
         appState.schedules = appState.schedules.filter(s => s.id !== scaleId);
-        saveappState();
+        await saveappState();
         showToast("Escala excluída.", "info");
         renderSchedules();
         renderDashboard();
