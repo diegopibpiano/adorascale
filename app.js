@@ -746,6 +746,24 @@ function renderAll() {
     renderSettings();
 }
 
+function sortappStateData() {
+    if (Array.isArray(appState.songs)) {
+        appState.songs.sort((a, b) => (a.titulo || "").localeCompare(b.titulo || "", "pt", { sensitivity: "base" }));
+    }
+
+    if (Array.isArray(appState.members)) {
+        appState.members.sort((a, b) => (a.nome || "").localeCompare(b.nome || "", "pt", { sensitivity: "base" }));
+    }
+
+    if (Array.isArray(appState.schedules)) {
+        appState.schedules.sort((a, b) => {
+            const dateA = `${a.data || ""} ${a.hora || ""}`.trim();
+            const dateB = `${b.data || ""} ${b.hora || ""}`.trim();
+            return dateA.localeCompare(dateB, "pt", { sensitivity: "base" });
+        });
+    }
+}
+
 // ==================== SETTINGS / ACCESS MANAGEMENT ====================
 function renderSettings() {
     populateAccessMemberSelect();
@@ -1461,8 +1479,8 @@ function deleteMember(memberId) {
 
 // ==================== SCHEDULES CONTROL (ESCALAS) ====================
 function renderSchedules() {
-    // 1. Tenta encontrar o container no DOM (ajuste os IDs conforme o Passo 1)
-    const container = document.getElementById('schedules-list') || 
+    const container = document.getElementById('escalas-list') ||
+                      document.getElementById('schedules-list') ||
                       document.getElementById('schedulesList') ||
                       document.querySelector('#schedules .list-container') ||
                       document.querySelector('#schedules');
@@ -1472,7 +1490,8 @@ function renderSchedules() {
         return;
     }
 
-    // 2. Se não houver escalas no appState
+    container.innerHTML = "";
+
     if (!appState.schedules || appState.schedules.length === 0) {
         container.innerHTML = `
             <div class="empty-state">
@@ -1482,23 +1501,14 @@ function renderSchedules() {
         return;
     }
 
-    // 3. Desenha a lista de escalas no container
-    container.innerHTML = appState.schedules.map(schedule => `
-        <div class="schedule-card" data-id="${schedule.id}">
-            <h3>${schedule.title || schedule.date || 'Escala'}</h3>
-            <p>${schedule.description || ''}</p>
-        </div>
-    `).join('');
+    const sortedSchedules = [...appState.schedules].sort((a, b) => {
+        const dateA = `${a.data || ""} ${a.hora || ""}`.trim();
+        const dateB = `${b.data || ""} ${b.hora || ""}`.trim();
+        return dateA.localeCompare(dateB, "pt", { sensitivity: "base" });
+    });
 
-    // 4. Re-inicializa ícones (evita sumir ícones após renderizar)
-    if (typeof lucide !== 'undefined' && lucide.createIcons) {
-        lucide.createIcons();
-    }
+    const groupedByMonth = groupSchedulesByMonth(sortedSchedules);
 
-    // Group schedules by month
-    const groupedByMonth = groupSchedulesByMonth(filteredSchedules);
-    
-    // Render each month
     Object.keys(groupedByMonth).sort().forEach(monthKey => {
         const monthHeader = document.createElement("div");
         monthHeader.className = "month-header";
@@ -1930,10 +1940,21 @@ function getSongFromSearchValue(searchValue) {
     const normalizedQuery = searchValue.trim().toLowerCase();
     if (!normalizedQuery) return null;
 
-    const song = appState.songs.find(item => item.titulo.toLowerCase() === normalizedQuery || item.artista.toLowerCase() === normalizedQuery);
-    if (song) return song;
+    const matchSong = appState.songs.find(item => {
+        const displayValue = `${item.titulo} — ${item.artista} (${item.tom})`.toLowerCase();
+        return (
+            item.titulo.toLowerCase() === normalizedQuery ||
+            item.artista.toLowerCase() === normalizedQuery ||
+            item.tom.toLowerCase() === normalizedQuery ||
+            displayValue === normalizedQuery ||
+            item.titulo.toLowerCase().includes(normalizedQuery) ||
+            item.artista.toLowerCase().includes(normalizedQuery) ||
+            item.tom.toLowerCase().includes(normalizedQuery) ||
+            displayValue.includes(normalizedQuery)
+        );
+    });
 
-    return appState.songs.find(item => item.titulo.toLowerCase().includes(normalizedQuery) || item.artista.toLowerCase().includes(normalizedQuery) || item.tom.toLowerCase().includes(normalizedQuery)) || null;
+    return matchSong || null;
 }
 
 function addSongFromDropdown() {
