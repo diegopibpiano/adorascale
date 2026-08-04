@@ -237,32 +237,35 @@ function setupRealtimeSync() {
     collections.forEach(coll => {
         try {
             db.collection(coll).onSnapshot(snapshot => {
-                if (snapshot && !snapshot.empty) {
-                    const cloudData = [];
-                    snapshot.forEach(doc => cloudData.push(doc.data()));
-
-                    if (cloudData.length > 0) {
-                        const itemMap = new Map();
-                        (appState[coll] || []).forEach(item => { if (item && item.id) itemMap.set(String(item.id), item); });
-                        cloudData.forEach(item => { if (item && item.id) itemMap.set(String(item.id), item); });
-
-                        appState[coll] = Array.from(itemMap.values());
-                        localStorage.setItem(`adorascale_${coll}`, JSON.stringify(appState[coll]));
-
-                        // Sort
-                        if (coll === 'songs' && Array.isArray(appState.songs)) {
-                            appState.songs.sort((a, b) => (a.titulo || '').localeCompare(b.titulo || ''));
-                        }
-                        if (coll === 'members' && Array.isArray(appState.members)) {
-                            appState.members.sort((a, b) => (a.nome || '').localeCompare(b.nome || ''));
-                        }
-                        if (coll === 'schedules' && Array.isArray(appState.schedules)) {
-                            appState.schedules.sort((a, b) => new Date(`${a.data}T${a.hora}`) - new Date(`${b.data}T${b.hora}`));
-                        }
-
-                        renderAll();
+                const cloudData = [];
+                snapshot.forEach(doc => {
+                    const data = doc.data();
+                    if (data && data.id) {
+                        cloudData.push({ ...data, __firestoreId: doc.id });
                     }
+                });
+
+                const normalizedItems = cloudData.filter(item => item && item.id).map(item => {
+                    const normalized = { ...item };
+                    delete normalized.__firestoreId;
+                    return normalized;
+                });
+
+                appState[coll] = normalizedItems;
+                localStorage.setItem(`adorascale_${coll}`, JSON.stringify(appState[coll]));
+
+                // Sort
+                if (coll === 'songs' && Array.isArray(appState.songs)) {
+                    appState.songs.sort((a, b) => (a.titulo || '').localeCompare(b.titulo || ''));
                 }
+                if (coll === 'members' && Array.isArray(appState.members)) {
+                    appState.members.sort((a, b) => (a.nome || '').localeCompare(b.nome || ''));
+                }
+                if (coll === 'schedules' && Array.isArray(appState.schedules)) {
+                    appState.schedules.sort((a, b) => new Date(`${a.data}T${a.hora}`) - new Date(`${b.data}T${b.hora}`));
+                }
+
+                renderAll();
             }, err => {
                 console.warn(`Aviso de escuta em tempo real para ${coll}:`, err);
             });
@@ -2166,12 +2169,18 @@ async function handleScaleSubmit(e) {
 
 async function deleteScale(scaleId) {
     if (confirm("Deseja realmente excluir esta escala de culto?")) {
-        await deleteFromCollection("schedules", scaleId);
-        appState.schedules = appState.schedules.filter(s => s.id !== scaleId);
-        await saveappState();
-        showToast("Escala excluída.", "info");
-        renderSchedules();
-        renderDashboard();
+        try {
+            await deleteFromCollection("schedules", scaleId);
+            appState.schedules = appState.schedules.filter(s => s.id !== scaleId);
+            await saveappState();
+            renderSchedules();
+            renderDashboard();
+            renderAll();
+            showToast("Escala excluída.", "info");
+        } catch (error) {
+            console.error("Erro ao excluir escala:", error);
+            showToast("Não foi possível excluir a escala.", "danger");
+        }
     }
 }
 
