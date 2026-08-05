@@ -1724,6 +1724,7 @@ function renderScheduleCard(container, sc) {
         // Render team members
         const roles = [
             { label: "Ministro(a)", id: sc.ministro },
+            { label: "Diretor Musical", id: sc.diretor },
             { label: "Teclado", id: sc.teclado },
             { label: "Violão", id: sc.violao },
             { label: "Guitarra", id: sc.guitarra },
@@ -1971,6 +1972,7 @@ function openScaleModal(scaleId = "") {
 
             // Populate participants
             document.getElementById("escala-ministro").value = sc.ministro || "";
+            document.getElementById("escala-diretor").value = sc.diretor || "";
             document.getElementById("escala-teclado").value = sc.teclado || "";
             document.getElementById("escala-violao").value = sc.violao || "";
             document.getElementById("escala-guitarra").value = sc.guitarra || "";
@@ -2035,6 +2037,7 @@ function renderScaleDetailsContent(sc) {
 
     const roles = [
         { label: "Ministro(a)", id: sc.ministro },
+        { label: "Diretor Musical", id: sc.diretor },
         { label: "Teclado", id: sc.teclado },
         { label: "Violão", id: sc.violao },
         { label: "Guitarra", id: sc.guitarra },
@@ -2409,6 +2412,7 @@ async function handleScaleSubmit(e) {
         versiculos: document.getElementById("escala-versiculos").value.trim(),
         
         ministro: document.getElementById("escala-ministro").value,
+        diretor: document.getElementById("escala-diretor").value,
         teclado: document.getElementById("escala-teclado").value,
         violao: document.getElementById("escala-violao").value,
         guitarra: document.getElementById("escala-guitarra").value,
@@ -2436,7 +2440,7 @@ async function handleScaleSubmit(e) {
     } else {
         // Initialize confirmacoes for all assigned members as pendente
         const confirmacoes = {};
-        const positions = ['ministro', 'teclado', 'violao', 'guitarra', 'baixo', 'bateria', 'percusao', 'vocal1', 'vocal2', 'vocal3', 'som', 'midia', 'transmissao'];
+        const positions = ['ministro', 'diretor', 'teclado', 'violao', 'guitarra', 'baixo', 'bateria', 'percusao', 'vocal1', 'vocal2', 'vocal3', 'som', 'midia', 'transmissao'];
         positions.forEach(pos => {
             if (scaleData[pos]) {
                 confirmacoes[scaleData[pos]] = "pendente";
