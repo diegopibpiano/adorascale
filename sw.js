@@ -1,6 +1,6 @@
 // Service Worker - AdoraScale (Estratégia Network-First para atualização imediata no celular)
 
-const CACHE_NAME = 'adorascale-cache-v4';
+const CACHE_NAME = 'adorascale-cache-v5';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
@@ -11,6 +11,7 @@ const ASSETS_TO_CACHE = [
 ];
 
 self.addEventListener('install', (event) => {
+  console.log('[SW] install');
   self.skipWaiting();
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => cache.addAll(ASSETS_TO_CACHE))
@@ -18,6 +19,7 @@ self.addEventListener('install', (event) => {
 });
 
 self.addEventListener('activate', (event) => {
+  console.log('[SW] activate');
   event.waitUntil(
     caches.keys().then((keys) =>
       Promise.all(

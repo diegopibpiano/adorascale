@@ -258,20 +258,19 @@ function initAuth() {
 }
 
 function mergeCollectionWithCloud(coll, cloudItems) {
+    // Use cloud data as source-of-truth for this collection.
+    // Keep any local-only items (not yet present in cloud) appended after cloud items.
     const currentItems = Array.isArray(appState[coll]) ? appState[coll] : [];
-    const itemMap = new Map();
 
-    currentItems.filter(item => item && item.id).forEach(item => {
-        itemMap.set(String(item.id), item);
-    });
-
+    const cloudMap = new Map();
     cloudItems.filter(item => item && item.id).forEach(item => {
-        if (!itemMap.has(String(item.id))) {
-            itemMap.set(String(item.id), item);
-        }
+        cloudMap.set(String(item.id), item);
     });
 
-    const mergedItems = Array.from(itemMap.values());
+    // Local-only items (not present in cloud yet)
+    const localOnly = currentItems.filter(item => item && item.id && !cloudMap.has(String(item.id)));
+
+    const mergedItems = Array.from(cloudMap.values()).concat(localOnly);
     appState[coll] = mergedItems;
     localStorage.setItem(`adorascale_${coll}`, JSON.stringify(appState[coll]));
 
